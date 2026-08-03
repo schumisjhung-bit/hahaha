@@ -499,11 +499,67 @@
       });
     };
 
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function collectCurrentEditorData(userData) {
+      const nameInput = document.getElementById('ownerNameInput');
+      const bioInput = document.getElementById('ownerBioInput');
+      if (nameInput) userData.name = nameInput.value;
+      if (bioInput) userData.bio = bioInput.value;
+
+      const projectItems = document.querySelectorAll('.project-item');
+      userData.projects = [];
+      projectItems.forEach(item => {
+        const title = item.querySelector('.proj-title-input').value;
+        const desc = item.querySelector('.proj-desc-input').value;
+        const tags = item.querySelector('.proj-tags-input').value;
+        userData.projects.push({ title, desc, tags, likes: 0 });
+      });
+    }
+
+    function renderProjectsList(projects) {
+      const container = document.getElementById('projectsEditorContainer');
+      let projectsHtml = '';
+      projects.forEach((p, index) => {
+        projectsHtml += `
+          <div class="project-item" data-index="${index}">
+            <div class="project-header-row">
+              <span class="project-title-label">#${index + 1}</span>
+              <button type="button" class="delete-project-btn" data-del-index="${index}">刪除此項</button>
+            </div>
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <label>作品標題</label>
+              <input type="text" class="proj-title-input" value="${escapeHtml(p.title || '')}" placeholder="例如：AI 智慧客服系統">
+            </div>
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <label>作品簡述</label>
+              <textarea class="proj-desc-input" placeholder="簡述專案背景、架構與成果...">${escapeHtml(p.desc || '')}</textarea>
+            </div>
+            <div class="form-group">
+              <label>標籤 (用空格隔開)</label>
+              <input type="text" class="proj-tags-input" value="${escapeHtml(p.tags || '')}" placeholder="React Firebase">
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = projectsHtml;
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
     const creatorIdFromUrl = urlParams.get('id');
     const mainContainer = document.getElementById('mainContainer');
     const previewBtnContainer = document.getElementById('previewBtnContainer');
-    const DEFAULT_EDITOR_ID = "my_portfolio_demo";
+    
+    // 💡 已將預設 ID 更新為你的專屬 Firebase 文件 ID
+    const DEFAULT_EDITOR_ID = "fKbZwVKJHV8P8mvCyN";
 
     initApp();
 
@@ -959,87 +1015,30 @@
             await renderEditorMode(uId);
           } catch (err) {
             console.error(err);
-            alert('回覆失敗，請稍後再試。');
+            alert('回覆送出失敗，請稍後再試。');
           }
         }
       });
 
-      document.getElementById('publishCloudBtn').onclick = async () => {
-        collectCurrentEditorData(userData);
-        try {
-          await setDoc(docRef, {
-            name: userData.name,
-            bio: userData.bio,
-            avatar: userData.avatar,
-            projects: userData.projects,
-            comments: userData.comments
-          }, { merge: true });
-          alert('🎉 儲存並同步至雲端成功！');
-        } catch (err) {
-          console.error(err);
-          alert('❌ 儲存失敗，請檢查網路連線。');
-        }
-      };
-    }
-
-    function collectCurrentEditorData(userData) {
-      const nameInput = document.getElementById('ownerNameInput');
-      const bioInput = document.getElementById('ownerBioInput');
-      if (nameInput) userData.name = nameInput.value.trim();
-      if (bioInput) userData.bio = bioInput.value.trim();
-
-      const projectItems = document.querySelectorAll('.project-item');
-      const updatedProjects = [];
-      projectItems.forEach(item => {
-        const title = item.querySelector('.proj-title-input').value.trim();
-        const desc = item.querySelector('.proj-desc-input').value.trim();
-        const tags = item.querySelector('.proj-tags-input').value.trim();
-        const oldLikes = item.getAttribute('data-likes') || 0;
-        updatedProjects.push({
-          title,
-          desc,
-          tags,
-          likes: parseInt(oldLikes)
-        });
-      });
-      userData.projects = updatedProjects;
-    }
-
-    function renderProjectsList(projects) {
-      const container = document.getElementById('projectsEditorContainer');
-      let html = '';
-      projects.forEach((p, index) => {
-        html += `
-          <div class="project-item" data-index="${index}" data-likes="${p.likes || 0}">
-            <div class="project-header-row">
-              <span class="project-title-label">#${index + 1}</span>
-              <button type="button" class="delete-project-btn" data-del-index="${index}">刪除此項</button>
-            </div>
-            <div class="form-group" style="margin-bottom: 1rem;">
-              <label>作品標題</label>
-              <input type="text" class="proj-title-input" value="${escapeHtml(p.title || '')}" placeholder="例如：AI 智慧客服系統">
-            </div>
-            <div class="form-group" style="margin-bottom: 1rem;">
-              <label>作品簡述</label>
-              <textarea class="proj-desc-input" placeholder="簡述專案背景、架構與成果...">${escapeHtml(p.desc || '')}</textarea>
-            </div>
-            <div class="form-group">
-              <label>標籤 (用空格隔開)</label>
-              <input type="text" class="proj-tags-input" value="${escapeHtml(p.tags || '')}" placeholder="React Firebase">
-            </div>
-          </div>
-        `;
-      });
-      container.innerHTML = html;
-    }
-
-    function escapeHtml(str) {
-      if (!str) return '';
-      return str.replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
+      const publishBtn = document.getElementById('publishCloudBtn');
+      if (publishBtn) {
+        publishBtn.onclick = async () => {
+          collectCurrentEditorData(userData);
+          try {
+            await setDoc(docRef, {
+              name: userData.name,
+              bio: userData.bio,
+              avatar: userData.avatar,
+              projects: userData.projects,
+              comments: userData.comments
+            }, { merge: true });
+            alert('🎉 成功儲存並同步至雲端！');
+          } catch (err) {
+            console.error(err);
+            alert('儲存失敗，請稍後再試。');
+          }
+        };
+      }
     }
   </script>
 </body>
