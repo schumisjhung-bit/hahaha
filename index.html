@@ -117,10 +117,19 @@
     .comments-section { margin-top: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
     .comment-input-box { display: flex; flex-direction: column; gap: 0.8rem; background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 14px; padding: 1.2rem; }
     .comment-list { display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1rem; }
-    .comment-item { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 1rem; }
-    .comment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; font-size: 0.85rem; color: var(--text-muted); }
+    .comment-item { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
+    .comment-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--text-muted); }
     .comment-author { font-weight: 700; color: var(--text-main); }
     .comment-content { font-size: 0.95rem; color: var(--text-main); line-height: 1.4; white-space: pre-wrap; }
+    
+    /* 回覆區塊與按鈕 */
+    .reply-box { background: var(--input-bg); border-left: 3px solid var(--primary-color); padding: 0.8rem; border-radius: 6px; font-size: 0.9rem; color: var(--text-main); margin-top: 0.4rem; white-space: pre-wrap; }
+    .reply-action-area { display: flex; gap: 0.5rem; margin-top: 0.5rem; align-items: center; }
+    .reply-input { flex-grow: 1; padding: 0.4rem 0.8rem; border: 1px solid var(--input-border); border-radius: 6px; font-size: 0.85rem; background: var(--card-bg); color: var(--text-main); outline: none; }
+    .reply-submit-btn { background: var(--primary-color); color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+    .reply-submit-btn:hover { background: var(--primary-hover); }
+    .toggle-reply-input-btn { background: none; border: none; color: var(--primary-color); font-size: 0.8rem; font-weight: 600; cursor: pointer; align-self: flex-start; padding: 0; }
+
     .comment-submit-btn { align-self: flex-end; background: var(--primary-color); color: white; border: none; padding: 0.5rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
     .comment-submit-btn:hover { background: var(--primary-hover); }
 
@@ -446,7 +455,7 @@
         document.getElementById('navLinks').style.display = 'none';
         authBtnContainer.innerHTML = '';
         previewBtnContainer.innerHTML = '';
-        loadVisitorProfile(profileId);
+        loadVisitorProfile(profileId, user);
       } else {
         document.getElementById('navLinks').style.display = 'flex';
         if (user) {
@@ -482,13 +491,15 @@
       };
     }
 
-    async function loadVisitorProfile(uId) {
+    async function loadVisitorProfile(uId, currentUser) {
       try {
         const docRef = doc(db, "users", uId);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
           const data = docSnap.data();
+          const isOwner = currentUser && currentUser.uid === uId;
+
           let projectsHtml = '';
           if (data.projects && data.projects.length > 0) {
             data.projects.forEach((p, index) => {
@@ -518,8 +529,24 @@
           let commentsHtml = '';
           const comments = data.comments || [];
           if (comments.length > 0) {
-            comments.forEach(c => {
+            comments.forEach((c, cIndex) => {
               const timeStr = c.createdAt ? new Date(c.createdAt).toLocaleString() : '';
+              let replySectionHtml = '';
+              
+              if (c.reply) {
+                replySectionHtml = `<div class="reply-box"><strong>👑 創作者回覆：</strong>${escapeHtml(c.reply)}</div>`;
+              } else if (isOwner) {
+                replySectionHtml = `
+                  <div id="replyActionArea_${cIndex}">
+                    <button class="toggle-reply-input-btn" onclick="document.getElementById('replyForm_${cIndex}').style.display='flex'; this.style.display='none';">💬 回覆此留言</button>
+                    <div id="replyForm_${cIndex}" style="display:none;" class="reply-action-area">
+                      <input type="text" class="reply-input" id="replyInput_${cIndex}" placeholder="輸入您的回覆...">
+                      <button class="reply-submit-btn" onclick="window.submitReply('${uId}', ${cIndex})">送出</button>
+                    </div>
+                  </div>
+                `;
+              }
+
               commentsHtml += `
                 <div class="comment-item">
                   <div class="comment-header">
@@ -527,11 +554,32 @@
                     <span>${timeStr}</span>
                   </div>
                   <div class="comment-content">${escapeHtml(c.text)}</div>
+                  ${replySectionHtml}
                 </div>
               `;
             });
           } else {
             commentsHtml = `<p style="color: var(--text-muted); font-size: 0.9rem;" id="noCommentsMsg" data-i18n="no_comments">${t('no_comments')}</p>`;
+          }
+
+          // 如果是本人看自己的頁面，隱藏留言輸入表單；只有非本人（訪客）可以留言
+          let commentInputBoxHtml = '';
+          if (!isOwner) {
+            commentInputBoxHtml = `
+              <div class="comment-input-box">
+                <div class="form-group">
+                  <label data-i18n="comment_name_label">${t('comment_name_label')}</label>
+                  <input type="text" id="commentAuthor" placeholder="${t('comment_name_placeholder')}">
+                </div>
+                <div class="form-group">
+                  <label data-i18n="comment_text_label">${t('comment_text_label')}</label>
+                  <textarea id="commentText" placeholder="${t('comment_text_placeholder')}" style="min-height: 80px;"></textarea>
+                </div>
+                <button class="comment-submit-btn" id="submitCommentBtn" data-i18n="comment_submit_btn">${t('comment_submit_btn')}</button>
+              </div>
+            `;
+          } else {
+            commentInputBoxHtml = `<p style="color: var(--text-muted); font-size: 0.9rem;">這是您的個人頁面，訪客可以在這裡留言，您可以對訪客留言進行回覆。</p>`;
           }
 
           mainContainer.innerHTML = `
@@ -565,17 +613,7 @@
             <div class="card">
               <h2 class="section-title" data-i18n="visitor_comments_title">${t('visitor_comments_title')}</h2>
               <div class="comments-section">
-                <div class="comment-input-box">
-                  <div class="form-group">
-                    <label data-i18n="comment_name_label">${t('comment_name_label')}</label>
-                    <input type="text" id="commentAuthor" placeholder="${t('comment_name_placeholder')}">
-                  </div>
-                  <div class="form-group">
-                    <label data-i18n="comment_text_label">${t('comment_text_label')}</label>
-                    <textarea id="commentText" placeholder="${t('comment_text_placeholder')}" style="min-height: 80px;"></textarea>
-                  </div>
-                  <button class="comment-submit-btn" id="submitCommentBtn" data-i18n="comment_submit_btn">${t('comment_submit_btn')}</button>
-                </div>
+                ${commentInputBoxHtml}
                 <div class="comment-list" id="commentListContainer">
                   ${commentsHtml}
                 </div>
@@ -625,55 +663,63 @@
             });
           });
 
-          document.getElementById('submitCommentBtn').addEventListener('click', async () => {
-            const author = document.getElementById('commentAuthor').value.trim();
-            const text = document.getElementById('commentText').value.trim();
+          // 如果不是本人，綁定訪客留言按鈕
+          const submitCommentBtn = document.getElementById('submitCommentBtn');
+          if (submitCommentBtn) {
+            submitCommentBtn.addEventListener('click', async () => {
+              const author = document.getElementById('commentAuthor').value.trim();
+              const text = document.getElementById('commentText').value.trim();
 
-            if (!author || !text) {
-              alert('請填寫您的稱呼與留言內容！');
+              if (!author || !text) {
+                alert('請填寫您的稱呼與留言內容！');
+                return;
+              }
+
+              submitCommentBtn.disabled = true;
+              submitCommentBtn.textContent = '傳送中...';
+
+              const newComment = {
+                name: author,
+                text: text,
+                createdAt: new Date().toISOString(),
+                reply: ""
+              };
+
+              try {
+                await updateDoc(docRef, {
+                  comments: arrayUnion(newComment)
+                });
+                alert('🎉 留言成功！');
+                location.reload();
+              } catch (err) {
+                console.error("留言失敗：", err);
+                alert('留言失敗。');
+                submitCommentBtn.disabled = false;
+                submitCommentBtn.textContent = t('comment_submit_btn');
+              }
+            });
+          }
+
+          // 綁定創作者回覆留言的全域函式
+          window.submitReply = async function(targetUId, commentIndex) {
+            const replyText = document.getElementById(`replyInput_${commentIndex}`).value.trim();
+            if (!replyText) {
+              alert('請輸入回覆內容！');
               return;
             }
 
-            const btn = document.getElementById('submitCommentBtn');
-            btn.disabled = true;
-            btn.textContent = '傳送中...';
-
-            const newComment = {
-              name: author,
-              text: text,
-              createdAt: new Date().toISOString()
-            };
-
             try {
+              data.comments[commentIndex].reply = replyText;
               await updateDoc(docRef, {
-                comments: arrayUnion(newComment)
+                comments: data.comments
               });
-
-              const listContainer = document.getElementById('commentListContainer');
-              const noMsg = document.getElementById('noCommentsMsg');
-              if (noMsg) noMsg.remove();
-
-              const timeStr = new Date(newComment.createdAt).toLocaleString();
-              const newDiv = document.createElement('div');
-              newDiv.className = 'comment-item';
-              newDiv.innerHTML = `
-                <div class="comment-header">
-                  <span class="comment-author">💬 ${escapeHtml(author)}</span>
-                  <span>${timeStr}</span>
-                </div>
-                <div class="comment-content">${escapeHtml(text)}</div>
-              `;
-              listContainer.prepend(newDiv);
-              document.getElementById('commentText').value = '';
-              alert('🎉 留言成功！');
+              alert('回覆成功！');
+              location.reload();
             } catch (err) {
-              console.error("留言失敗：", err);
-              alert('留言失敗。');
-            } finally {
-              btn.disabled = false;
-              btn.textContent = t('comment_submit_btn');
+              console.error("回覆失敗", err);
+              alert('回覆失敗，請稍後再試。');
             }
-          });
+          };
 
         } else {
           mainContainer.innerHTML = `<div class="card" style="text-align:center;"><p>找不到這位創作者的資料。</p><br><a href="index.html" class="back-home-btn" onclick="event.preventDefault(); window.location.href=window.location.pathname;">返回主頁</a></div>`;
@@ -841,12 +887,14 @@
         }
       };
 
-      // 渲染自己的留言板
+      // 渲染自己的留言板（編輯模式下的預覽與回覆管理）
       const myCommentsContainer = document.getElementById('myCommentsListContainer');
       if (userData.comments && userData.comments.length > 0) {
         myCommentsContainer.innerHTML = '';
-        userData.comments.forEach(c => {
+        userData.comments.forEach((c, cIndex) => {
           const timeStr = c.createdAt ? new Date(c.createdAt).toLocaleString() : '';
+          let replySectionHtml = c.reply ? `<div class="reply-box"><strong>👑 我的回覆：</strong>${escapeHtml(c.reply)}</div>` : '';
+          
           myCommentsContainer.innerHTML += `
             <div class="comment-item">
               <div class="comment-header">
@@ -854,9 +902,32 @@
                 <span>${timeStr}</span>
               </div>
               <div class="comment-content">${escapeHtml(c.text)}</div>
+              ${replySectionHtml}
+              <div style="margin-top: 0.5rem;">
+                <input type="text" class="reply-input" id="editorReplyInput_${cIndex}" placeholder="${c.reply ? '修改回覆...' : '回覆這位訪客...'}" style="width: 70%; display: inline-block; margin-right: 0.5rem;">
+                <button class="reply-submit-btn" onclick="window.submitEditorReply('${currentUserId}', ${cIndex})">送出回覆</button>
+              </div>
             </div>
           `;
         });
+
+        window.submitEditorReply = async function(userId, cIndex) {
+          const val = document.getElementById(`editorReplyInput_${cIndex}`).value.trim();
+          if (!val) {
+            alert('請輸入回覆內容！');
+            return;
+          }
+          try {
+            userData.comments[cIndex].reply = val;
+            await setDoc(doc(db, "users", userId), userData, { merge: true });
+            alert('回覆成功！');
+            location.reload();
+          } catch (err) {
+            console.error(err);
+            alert('回覆失敗');
+          }
+        };
+
       } else {
         myCommentsContainer.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">目前還沒有訪客留言。</p>';
       }
