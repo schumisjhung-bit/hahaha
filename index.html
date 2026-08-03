@@ -46,8 +46,8 @@
     .nav-right { display: flex; gap: 0.8rem; align-items: center; }
     
     .select-lang, .theme-toggle, .auth-btn { background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 0.4rem 0.8rem; border-radius: 8px; font-size: 0.85rem; cursor: pointer; outline: none; font-weight: 600; }
-    .auth-btn { background: var(--primary-color); color: white; border: none; display: flex; align-items: center; gap: 0.4rem; }
-    .auth-btn:hover { background: var(--primary-hover); }
+    .auth-btn { background: var(--danger-color); color: white; border: none; display: flex; align-items: center; gap: 0.4rem; }
+    .auth-btn:hover { background: var(--danger-hover); }
     .theme-toggle { font-size: 1rem; line-height: 1; }
 
     /* 主容器與區塊卡片 */
@@ -153,6 +153,7 @@
         <option value="ko">🇰🇷 한국어</option>
       </select>
       <button class="theme-toggle" id="themeToggleBtn">🌙</button>
+      <div id="authBtnContainer"></div>
     </div>
   </header>
 
@@ -188,6 +189,7 @@
         login_title: "🚀 歡迎來到 Portfolio Studio",
         login_desc: "請使用 Google 帳號登入。登入後無論更換手機或電腦，都能隨時隨地存取與編輯你專屬的作品集與雲端資料！",
         login_btn: "使用 Google 帳號立即登入",
+        logout_btn: "登出",
         profile_title: "👤 個人資料設定",
         avatar_text: "新增頭貼",
         name_label: "您的姓名 / 暱稱",
@@ -225,6 +227,7 @@
         login_title: "🚀 欢迎来到 Portfolio Studio",
         login_desc: "请使用 Google 账号登录。登录后无论更换手机或电脑，都能随时随地访问与编辑你专属的作品集与云端数据！",
         login_btn: "使用 Google 账号立即登录",
+        logout_btn: "登出",
         profile_title: "👤 个人资料设置",
         avatar_text: "添加头像",
         name_label: "您的姓名 / 昵称",
@@ -262,6 +265,7 @@
         login_title: "🚀 Welcome to Portfolio Studio",
         login_desc: "Sign in with Google to access and edit your portfolio and cloud data anywhere, anytime across devices!",
         login_btn: "Sign in with Google",
+        logout_btn: "Logout",
         profile_title: "👤 Profile Settings",
         avatar_text: "Add Avatar",
         name_label: "Your Name / Nickname",
@@ -299,6 +303,7 @@
         login_title: "🚀 Portfolio Studio へようこそ",
         login_desc: "Google アカウントでログインして、いつでもどこでもポートフォリオを編集・管理しましょう！",
         login_btn: "Google でログイン",
+        logout_btn: "ログアウト",
         profile_title: "👤 プロフィール設定",
         avatar_text: "画像追加",
         name_label: "お名前 / ニックネーム",
@@ -336,6 +341,7 @@
         login_title: "🚀 Portfolio Studio에 오신 것을 환영합니다",
         login_desc: "Google 계정으로 로그인하여 언제 어디서나 포트폴리오와 클라우드 데이터를 관리하세요!",
         login_btn: "Google로 로그인",
+        logout_btn: "로그아웃",
         profile_title: "👤 프로필 설정",
         avatar_text: "아바타 추가",
         name_label: "이름 / 닉네임",
@@ -410,6 +416,7 @@
     const urlParams = new URLSearchParams(window.location.search);
     const profileId = urlParams.get('id');
     const mainContainer = document.getElementById('mainContainer');
+    const authBtnContainer = document.getElementById('authBtnContainer');
 
     onAuthStateChanged(auth, async (user) => {
       const currentThemeIcon = document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
@@ -417,11 +424,15 @@
       
       if (profileId) {
         document.getElementById('navLinks').style.display = 'none';
+        authBtnContainer.innerHTML = '';
         loadVisitorProfile(profileId);
       } else {
         if (user) {
+          authBtnContainer.innerHTML = `<button class="auth-btn" id="logoutBtn" data-i18n="logout_btn">${t('logout_btn')}</button>`;
+          document.getElementById('logoutBtn').onclick = () => signOut(auth);
           renderEditorMode(user.uid);
         } else {
+          authBtnContainer.innerHTML = '';
           renderLoginWall();
         }
       }
