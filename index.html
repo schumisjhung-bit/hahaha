@@ -45,7 +45,9 @@
     
     .nav-right { display: flex; gap: 0.8rem; align-items: center; }
     
-    .select-lang, .theme-toggle, .auth-btn { background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 0.4rem 0.8rem; border-radius: 8px; font-size: 0.85rem; cursor: pointer; outline: none; font-weight: 600; }
+    .select-lang, .theme-toggle, .auth-btn, .preview-toggle-btn { background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 0.4rem 0.8rem; border-radius: 8px; font-size: 0.85rem; cursor: pointer; outline: none; font-weight: 600; }
+    .preview-toggle-btn { background: var(--primary-color); color: white; border: none; display: flex; align-items: center; gap: 0.4rem; }
+    .preview-toggle-btn:hover { background: var(--primary-hover); }
     .auth-btn { background: var(--danger-color); color: white; border: none; display: flex; align-items: center; gap: 0.4rem; }
     .auth-btn:hover { background: var(--danger-hover); }
     .theme-toggle { font-size: 1rem; line-height: 1; }
@@ -144,6 +146,7 @@
       <a href="#community-section" data-i18n="nav_community">創作者牆</a>
     </div>
     <div class="nav-right" id="navRight">
+      <div id="previewBtnContainer"></div>
       <!-- 語言切換選單 -->
       <select class="select-lang" id="langSelect">
         <option value="zh-Hant">🇹🇼 繁體中文</option>
@@ -190,6 +193,8 @@
         login_desc: "請使用 Google 帳號登入。登入後無論更換手機或電腦，都能隨時隨地存取與編輯你專屬的作品集與雲端資料！",
         login_btn: "使用 Google 帳號立即登入",
         logout_btn: "登出",
+        preview_mode_btn: "👁️ 預覽模式",
+        edit_mode_btn: "✏️ 返回編輯",
         profile_title: "👤 個人資料設定",
         avatar_text: "新增頭貼",
         name_label: "您的姓名 / 暱稱",
@@ -228,6 +233,8 @@
         login_desc: "请使用 Google 账号登录。登录后无论更换手机或电脑，都能随时随地访问与编辑你专属的作品集与云端数据！",
         login_btn: "使用 Google 账号立即登录",
         logout_btn: "登出",
+        preview_mode_btn: "👁️ 预览模式",
+        edit_mode_btn: "✏️ 返回编辑",
         profile_title: "👤 个人资料设置",
         avatar_text: "添加头像",
         name_label: "您的姓名 / 昵称",
@@ -266,6 +273,8 @@
         login_desc: "Sign in with Google to access and edit your portfolio and cloud data anywhere, anytime across devices!",
         login_btn: "Sign in with Google",
         logout_btn: "Logout",
+        preview_mode_btn: "👁️ Preview",
+        edit_mode_btn: "✏️ Edit Mode",
         profile_title: "👤 Profile Settings",
         avatar_text: "Add Avatar",
         name_label: "Your Name / Nickname",
@@ -304,6 +313,8 @@
         login_desc: "Google アカウントでログインして、いつでもどこでもポートフォリオを編集・管理しましょう！",
         login_btn: "Google でログイン",
         logout_btn: "ログアウト",
+        preview_mode_btn: "👁️ プレビュー",
+        edit_mode_btn: "✏️ 編集に戻る",
         profile_title: "👤 プロフィール設定",
         avatar_text: "画像追加",
         name_label: "お名前 / ニックネーム",
@@ -342,6 +353,8 @@
         login_desc: "Google 계정으로 로그인하여 언제 어디서나 포트폴리오와 클라우드 데이터를 관리하세요!",
         login_btn: "Google로 로그인",
         logout_btn: "로그아웃",
+        preview_mode_btn: "👁️ 미리보기",
+        edit_mode_btn: "✏️ 편집으로",
         profile_title: "👤 프로필 설정",
         avatar_text: "아바타 추가",
         name_label: "이름 / 닉네임",
@@ -417,6 +430,7 @@
     const profileId = urlParams.get('id');
     const mainContainer = document.getElementById('mainContainer');
     const authBtnContainer = document.getElementById('authBtnContainer');
+    const previewBtnContainer = document.getElementById('previewBtnContainer');
 
     onAuthStateChanged(auth, async (user) => {
       const currentThemeIcon = document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
@@ -425,6 +439,7 @@
       if (profileId) {
         document.getElementById('navLinks').style.display = 'none';
         authBtnContainer.innerHTML = '';
+        previewBtnContainer.innerHTML = '';
         loadVisitorProfile(profileId);
       } else {
         if (user) {
@@ -432,6 +447,7 @@
           document.getElementById('logoutBtn').onclick = () => signOut(auth);
           renderEditorMode(user.uid);
         } else {
+          previewBtnContainer.innerHTML = '';
           authBtnContainer.innerHTML = '';
           renderLoginWall();
         }
@@ -615,8 +631,28 @@
     }
 
     function renderEditorMode(currentUserId) {
-      const user = auth.currentUser;
+      previewBtnContainer.innerHTML = `<button class="preview-toggle-btn" id="previewToggleBtn" data-i18n="preview_mode_btn">${t('preview_mode_btn')}</button>`;
+      
+      let isPreview = false;
+      const previewBtn = document.getElementById('previewToggleBtn');
 
+      previewBtn.addEventListener('click', () => {
+        isPreview = !isPreview;
+        if (isPreview) {
+          previewBtn.textContent = t('edit_mode_btn');
+          previewBtn.style.background = 'var(--success-color)';
+          renderPreviewUI();
+        } else {
+          previewBtn.textContent = t('preview_mode_btn');
+          previewBtn.style.background = 'var(--primary-color)';
+          renderEditableUI(currentUserId);
+        }
+      });
+
+      renderEditableUI(currentUserId);
+    }
+
+    function renderEditableUI(currentUserId) {
       mainContainer.innerHTML = `
         <div class="card" id="profile-section">
           <h2 class="section-title" data-i18n="profile_title">${t('profile_title')}</h2>
@@ -678,6 +714,58 @@
       initEditorLogic(currentUserId);
     }
 
+    function renderPreviewUI() {
+      const draftStr = localStorage.getItem('portfolio_draft_' + auth.currentUser.uid);
+      let draft = draftStr ? JSON.parse(draftStr) : { name: "無名", bio: "", avatar: "", projects: [] };
+
+      let projectsHtml = '';
+      if (draft.projects && draft.projects.length > 0) {
+        draft.projects.forEach(p => {
+          const tagsHtml = p.tags ? p.tags.split(' ').map(t => `<span class="tag">#${t}</span>`).join('') : '';
+          projectsHtml += `
+            <div class="visitor-project-card">
+              <h3>${escapeHtml(p.title || '無標題')}</h3>
+              <p>${escapeHtml(p.desc || '無簡述')}</p>
+              <div class="tag-list">${tagsHtml}</div>
+            </div>
+          `;
+        });
+      } else {
+        projectsHtml = '<p style="color: var(--text-muted);">尚未發表任何作品。</p>';
+      }
+
+      mainContainer.innerHTML = `
+        <div style="background: rgba(59, 130, 246, 0.1); border: 1px dashed var(--primary-color); padding: 0.8rem 1.2rem; border-radius: 10px; text-align: center; font-size: 0.9rem; font-weight: 600; color: var(--primary-color);">
+          👁️ 目前為「即時預覽模式」（這是訪客看到的畫面排版）
+        </div>
+        <div class="card">
+          <h2 class="section-title" data-i18n="visitor_profile_title">${t('visitor_profile_title')}</h2>
+          <div class="profile-grid">
+            <div class="avatar-area">
+              <div class="avatar-box" style="cursor: default;">
+                <img src="${draft.avatar || 'https://via.placeholder.com/140'}" alt="頭貼">
+              </div>
+            </div>
+            <div class="profile-fields">
+              <div class="form-group">
+                <label data-i18n="name_label">${t('name_label')}</label>
+                <div style="font-size: 1.2rem; font-weight: 700; color: var(--text-main);">${escapeHtml(draft.name || '無名')}</div>
+              </div>
+              <div class="form-group">
+                <label data-i18n="bio_label">${t('bio_label')}</label>
+                <div class="visitor-bio">${escapeHtml(draft.bio || '這人很懶，什麼都沒有留下。')}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="section-title" data-i18n="visitor_portfolio_title">${t('visitor_portfolio_title')}</h2>
+          ${projectsHtml}
+        </div>
+      `;
+    }
+
     async function initEditorLogic(currentUserId) {
       let profileNameInput = document.getElementById('profileName');
       let profileBioInput = document.getElementById('profileBio');
@@ -690,23 +778,38 @@
         { title: "作品名稱 C", desc: "後端 API 串接與資料庫系統架構實作。", tags: "NodeJS Firebase" }
       ];
 
-      try {
-        const docRef = doc(db, "users", currentUserId);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          if (data.name) profileNameInput.value = data.name;
-          if (data.bio) profileBioInput.value = data.bio;
-          if (data.avatar) {
-            base64Avatar = data.avatar;
+      // 優先載入本地暫存草稿（讓預覽模式能即時抓到最新輸入）
+      const localDraft = localStorage.getItem('portfolio_draft_' + currentUserId);
+      if (localDraft) {
+        try {
+          const parsed = JSON.parse(localDraft);
+          if (parsed.name !== undefined) profileNameInput.value = parsed.name;
+          if (parsed.bio !== undefined) profileBioInput.value = parsed.bio;
+          if (parsed.avatar) {
+            base64Avatar = parsed.avatar;
             avatarBox.innerHTML = `<img src="${base64Avatar}" alt="頭貼預覽">`;
           }
-          if (data.projects && data.projects.length > 0) {
-            projectsData = data.projects;
+          if (parsed.projects) projectsData = parsed.projects;
+        } catch(e) {}
+      } else {
+        try {
+          const docRef = doc(db, "users", currentUserId);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.name) profileNameInput.value = data.name;
+            if (data.bio) profileBioInput.value = data.bio;
+            if (data.avatar) {
+              base64Avatar = data.avatar;
+              avatarBox.innerHTML = `<img src="${base64Avatar}" alt="頭貼預覽">`;
+            }
+            if (data.projects && data.projects.length > 0) {
+              projectsData = data.projects;
+            }
           }
+        } catch (e) {
+          console.error("讀取個人雲端資料失敗", e);
         }
-      } catch (e) {
-        console.error("讀取個人雲端資料失敗", e);
       }
 
       function saveDraftLocally() {
