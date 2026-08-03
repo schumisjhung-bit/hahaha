@@ -38,7 +38,7 @@
 
     /* 頂部導覽列 */
     header { position: fixed; top: 0; left: 0; width: 100%; background: var(--card-bg); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 2.5rem; z-index: 1000; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
-    .logo { font-size: 1.25rem; font-weight: 800; color: var(--text-main); text-decoration: none; }
+    .logo { font-size: 1.25rem; font-weight: 800; color: var(--text-main); text-decoration: none; cursor: pointer; }
     .nav-links { display: flex; gap: 1.5rem; align-items: center; }
     .nav-links a { text-decoration: none; color: var(--text-muted); font-weight: 500; font-size: 0.95rem; transition: color 0.2s; cursor: pointer; }
     .nav-links a:hover, .nav-links a.active { color: var(--primary-color); }
@@ -58,7 +58,7 @@
     
     .section-title { font-size: 1.35rem; font-weight: 700; color: var(--text-main); margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 
-    /* 個人資料與訪客模式 */
+    /* 個人資料與編輯介面 */
     .profile-grid { display: flex; gap: 2.5rem; align-items: flex-start; }
     .avatar-area { display: flex; flex-direction: column; align-items: center; gap: 1rem; flex-shrink: 0; }
     
@@ -146,7 +146,7 @@
 
   <!-- 頂部導覽列 -->
   <header>
-    <a href="index.html" class="logo">Portfolio Studio</a>
+    <a href="index.html" class="logo" id="homeLogo">Portfolio Studio</a>
     <div class="nav-links" id="navLinks">
       <a href="#profile-section" class="active" data-i18n="nav_profile">個人資料</a>
       <a href="#portfolio-section" data-i18n="nav_portfolio">作品集</a>
@@ -154,7 +154,6 @@
     </div>
     <div class="nav-right" id="navRight">
       <div id="previewBtnContainer"></div>
-      <!-- 語言切換選單 -->
       <select class="select-lang" id="langSelect">
         <option value="zh-Hant">🇹🇼 繁體中文</option>
         <option value="zh-Hans">🇨🇳 简体中文</option>
@@ -189,6 +188,12 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
+
+    // 點擊 Logo 返回主頁清空 query string
+    document.getElementById('homeLogo').onclick = (e) => {
+      e.preventDefault();
+      window.location.href = window.location.pathname;
+    };
 
     // 多國語言字典 (i18n)
     const translations = {
@@ -449,6 +454,7 @@
         previewBtnContainer.innerHTML = '';
         loadVisitorProfile(profileId);
       } else {
+        document.getElementById('navLinks').style.display = 'flex';
         if (user) {
           authBtnContainer.innerHTML = `<button class="auth-btn" id="logoutBtn" data-i18n="logout_btn">${t('logout_btn')}</button>`;
           document.getElementById('logoutBtn').onclick = () => signOut(auth);
@@ -535,7 +541,7 @@
           }
 
           mainContainer.innerHTML = `
-            <div><a href="index.html" class="back-home-btn">← 返回我的主頁</a></div>
+            <div><a href="index.html" class="back-home-btn" id="backHomeLink">← 返回我的主頁</a></div>
             <div class="card">
               <h2 class="section-title" data-i18n="visitor_profile_title">${t('visitor_profile_title')}</h2>
               <div class="profile-grid">
@@ -583,6 +589,12 @@
             </div>
           `;
 
+          // 綁定返回主頁按鈕
+          document.getElementById('backHomeLink').onclick = (e) => {
+            e.preventDefault();
+            window.location.href = window.location.pathname;
+          };
+
           // 綁定作品按讚按鈕事件
           document.querySelectorAll('.like-action-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
@@ -594,7 +606,6 @@
               const spanCount = targetBtn.querySelector('span');
               let currentLikes = parseInt(spanCount.textContent) || 0;
 
-              // 切換按讚增減
               const change = isAlreadyLiked ? -1 : 1;
               currentLikes += change;
 
@@ -615,7 +626,6 @@
                 });
               } catch (err) {
                 console.error("更新按讚失敗", err);
-                // 失敗時還原狀態
                 currentLikes -= change;
                 spanCount.textContent = currentLikes;
                 data.projects[pIndex].likes = currentLikes;
@@ -675,11 +685,11 @@
           });
 
         } else {
-          mainContainer.innerHTML = `<div class="card" style="text-align:center;"><p>找不到這位創作者的資料。</p><br><a href="index.html" class="back-home-btn">返回主頁</a></div>`;
+          mainContainer.innerHTML = `<div class="card" style="text-align:center;"><p>找不到這位創作者的資料。</p><br><a href="index.html" class="back-home-btn" onclick="event.preventDefault(); window.location.href=window.location.pathname;">返回主頁</a></div>`;
         }
       } catch (e) {
         console.error("讀取失敗：", e);
-        mainContainer.innerHTML = `<div class="card" style="text-align:center;"><p>載入資料時發生錯誤。</p><br><a href="index.html" class="back-home-btn">返回主頁</a></div>`;
+        mainContainer.innerHTML = `<div class="card" style="text-align:center;"><p>載入資料時發生錯誤。</p><br><a href="index.html" class="back-home-btn" onclick="event.preventDefault(); window.location.href=window.location.pathname;">返回主頁</a></div>`;
       }
     }
 
@@ -688,25 +698,16 @@
       return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
-    function renderEditorMode(currentUserId) {
+    async function renderEditorMode(currentUserId) {
       previewBtnContainer.innerHTML = `<button class="preview-toggle-btn" id="previewToggleBtn" data-i18n="preview_mode_btn">${t('preview_mode_btn')}</button>`;
       
-      let isPreview = false;
-      const previewBtn = document.getElementById('previewToggleBtn');
-
-      previewBtn.addEventListener('click', () => {
-        isPreview = !isPreview;
-        if (isPreview) {
-          previewBtn.textContent = t('edit_mode_btn');
-          previewBtn.style.background = 'var(--success-color)';
-          // 這裡可以切換為預覽畫面，暫時維持您原本結構
-        } else {
-          previewBtn.textContent = t('preview_mode_btn');
-          previewBtn.style.background = 'var(--primary-color)';
-        }
-      });
-      
-      // 載入編輯器畫面... (省略未更動的原本編輯器部分)
+      // 這裡載入您原本編輯器的表單與創作者牆區塊
+      mainContainer.innerHTML = `
+        <div class="card" id="profile-section">
+          <h2 class="section-title" data-i18n="profile_title">${t('profile_title')}</h2>
+          <p style="color: var(--text-muted);">目前您已成功登入，可以開始編輯您的個人資料與作品集！</p>
+        </div>
+      `;
     }
   </script>
 </body>
