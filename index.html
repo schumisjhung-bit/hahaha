@@ -67,9 +67,6 @@
     .avatar-box img { width: 100%; height: 100%; object-fit: cover; }
     .avatar-box .plus-icon { font-size: 2rem; font-weight: 300; color: var(--primary-color); }
     .avatar-box .upload-text { font-size: 0.8rem; color: var(--text-muted); }
-    
-    .upload-btn { background: var(--primary-color); color: white; border: none; padding: 0.5rem 1.2rem; border-radius: 8px; font-weight: 600; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; transition: background 0.2s; }
-    .upload-btn:hover { background: var(--primary-hover); }
 
     .profile-fields { flex-grow: 1; display: flex; flex-direction: column; gap: 1.2rem; }
     .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
@@ -761,6 +758,11 @@
           <div class="creators-grid" id="creatorsGridContainer"></div>
         </div>
       `;
+
+      // 綁定預覽模式按鈕點擊事件
+      document.getElementById('previewToggleBtn').onclick = () => {
+        window.location.href = `?id=${currentUserId}`;
+      };
 
       // 渲染專案列表
       const projectsListContainer = document.getElementById('projectsEditorList');
