@@ -953,8 +953,8 @@
         const file = e.target.files[0];
         if (file) {
           const reader = new FileReader();
-          reader.onload = (evt) => {
-            userData.avatar = evt.target.result;
+          reader.onload = (uploadEvent) => {
+            userData.avatar = uploadEvent.target.result;
             avatarBox.innerHTML = `<img src="${userData.avatar}" alt="頭貼">`;
           };
           reader.readAsDataURL(file);
@@ -962,6 +962,7 @@
       };
 
       document.getElementById('addProjectBtn').onclick = () => {
+        collectCurrentEditorData(userData);
         if (!userData.projects) userData.projects = [];
         userData.projects.push({ title: '', desc: '', tags: '', likes: 0 });
         renderProjectsList(userData.projects);
@@ -969,12 +970,23 @@
 
       document.getElementById('projectsEditorContainer').addEventListener('click', (e) => {
         if (e.target.classList.contains('delete-project-btn')) {
-          const idx = parseInt(e.target.getAttribute('data-del-index'));
+          const delIdx = parseInt(e.target.getAttribute('data-del-index'));
           collectCurrentEditorData(userData);
-          userData.projects.splice(idx, 1);
+          userData.projects.splice(delIdx, 1);
           renderProjectsList(userData.projects);
         }
       });
+
+      document.getElementById('publishCloudBtn').onclick = async () => {
+        collectCurrentEditorData(userData);
+        try {
+          await setDoc(docRef, userData, { merge: true });
+          alert('✨ 成功儲存並同步至雲端！');
+        } catch (err) {
+          console.error(err);
+          alert('儲存失敗，請檢查網路或 Firebase 設定。');
+        }
+      };
 
       document.getElementById('myCommentsEditorList').addEventListener('click', async (e) => {
         if (e.target.classList.contains('submit-sub-reply-btn')) {
@@ -982,15 +994,13 @@
           const box = e.target.closest('.sub-reply-box');
           const rNameInput = box.querySelector('.sub-reply-name');
           const rTextInput = box.querySelector('.sub-reply-text');
-          const rName = rNameInput.value.trim() || userData.name || '創作者';
+          const rName = rNameInput.value.trim();
           const rText = rTextInput.value.trim();
 
-          if (!rText) {
-            alert('回覆內容不能為空！');
+          if (!rName || !rText) {
+            alert('請填寫稱呼與回覆內容！');
             return;
           }
-
-          collectCurrentEditorData(userData);
 
           const newReply = {
             name: rName,
@@ -998,47 +1008,36 @@
             createdAt: new Date().toISOString()
           };
 
-          if (!userData.comments[commentIdx].replies) {
-            userData.comments[commentIdx].replies = [];
+          if (!myComments[commentIdx].replies) {
+            myComments[commentIdx].replies = [];
           }
-          userData.comments[commentIdx].replies.push(newReply);
+          myComments[commentIdx].replies.push(newReply);
+          userData.comments = myComments;
 
           try {
-            await setDoc(docRef, {
-              name: userData.name,
-              bio: userData.bio,
-              avatar: userData.avatar,
-              projects: userData.projects,
-              comments: userData.comments
-            }, { merge: true });
-            alert('回覆成功！');
-            await renderEditorMode(uId);
+            await updateDoc(docRef, { comments: myComments });
+            rNameInput.value = '';
+            rTextInput.value = '';
+            
+            const itemDiv = document.querySelector(`[data-comment-idx="${commentIdx}"]`);
+            const replyListContainer = itemDiv.querySelector('.reply-list');
+            const rTimeStr = new Date(newReply.createdAt).toLocaleString();
+            
+            replyListContainer.insertAdjacentHTML('beforeend', `
+              <div style="margin-top: 0.5rem; padding: 0.5rem 0.75rem; background: rgba(0,0,0,0.03); border-left: 2px solid var(--primary); border-radius: 4px;">
+                <div style="font-size: 0.8rem; font-weight: bold; color: var(--primary); display: flex; justify-content: space-between;">
+                  <span>💬 ${escapeHtml(newReply.name)}</span>
+                  <span style="color: var(--text-muted); font-size: 0.75rem;">${rTimeStr}</span>
+                </div>
+                <div style="font-size: 0.9rem; margin-top: 0.2rem; color: var(--text-main);">${escapeHtml(newReply.text)}</div>
+              </div>
+            `);
           } catch (err) {
             console.error(err);
-            alert('回覆送出失敗，請稍後再試。');
+            alert("回覆送出失敗，請稍後再試。");
           }
         }
       });
-
-      const publishBtn = document.getElementById('publishCloudBtn');
-      if (publishBtn) {
-        publishBtn.onclick = async () => {
-          collectCurrentEditorData(userData);
-          try {
-            await setDoc(docRef, {
-              name: userData.name,
-              bio: userData.bio,
-              avatar: userData.avatar,
-              projects: userData.projects,
-              comments: userData.comments
-            }, { merge: true });
-            alert('🎉 成功儲存並同步至雲端！');
-          } catch (err) {
-            console.error(err);
-            alert('儲存失敗，請稍後再試。');
-          }
-        };
-      }
     }
   </script>
 </body>
