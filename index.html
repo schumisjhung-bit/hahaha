@@ -1,8 +1,436 @@
-<script type="module">
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CreatorHub 創作者個人作品集與互動牆</title>
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding-bottom: 3rem;
+    }
+
+    header {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-brand {
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-color);
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: bold;
+      margin-bottom: 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .profile-grid {
+      display: flex;
+      gap: 2rem;
+      align-items: flex-start;
+    }
+
+    @media (max-width: 600px) {
+      .profile-grid {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+    }
+
+    .avatar-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .avatar-box {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: var(--bg-color);
+      border: 2px dashed var(--border);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .avatar-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .avatar-box .plus-icon {
+      font-size: 1.5rem;
+      color: var(--text-muted);
+    }
+
+    .avatar-box .upload-text {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .upload-btn {
+      background: var(--bg-color);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .profile-fields {
+      flex: 1;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .form-group label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    input[type="text"], textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus, textarea:focus {
+      border-color: var(--primary);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .header-add-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .header-add-btn:hover {
+      background: var(--primary-hover);
+    }
+
+    .project-item {
+      background: var(--bg-color);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      position: relative;
+    }
+
+    .project-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .project-title-label {
+      font-weight: bold;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .delete-project-btn {
+      background: var(--danger);
+      color: white;
+      border: none;
+      padding: 0.3rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+
+    .delete-project-btn:hover {
+      background: var(--danger-hover);
+    }
+
+    .publish-section {
+      text-align: center;
+      background: linear-gradient(to bottom, #ffffff, #f1f5f9);
+    }
+
+    .publish-desc {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .publish-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.75rem 2rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .publish-btn:hover {
+      background: var(--primary-hover);
+    }
+
+    .visitor-profile-card {
+      text-align: center;
+    }
+
+    .visitor-avatar {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 1rem;
+      border: 2px solid var(--border);
+    }
+
+    .visitor-name {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+
+    .visitor-bio {
+      color: var(--text-muted);
+      font-size: 1rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .projects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .project-card {
+      background: var(--bg-color);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .project-title {
+      font-size: 1.1rem;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+
+    .project-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+      flex: 1;
+    }
+
+    .project-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-bottom: 1rem;
+    }
+
+    .project-tag {
+      background: #e0e7ff;
+      color: var(--primary);
+      font-size: 0.75rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    .project-footer {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .like-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .like-btn:hover {
+      background: #f1f5f9;
+    }
+
+    .creators-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 1rem;
+    }
+
+    .creator-card {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      text-decoration: none;
+      color: inherit;
+      background: var(--bg-color);
+      transition: border-color 0.2s;
+    }
+
+    .creator-card:hover {
+      border-color: var(--primary);
+    }
+
+    .creator-avatar {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .creator-info h4 {
+      font-size: 0.95rem;
+      font-weight: bold;
+    }
+
+    .creator-info p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 170px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="#" class="nav-brand" id="navBrand">CreatorHub</a>
+    <div class="nav-actions">
+      <div id="previewBtnContainer"></div>
+      <button class="btn-secondary" id="langSwitchBtn">EN / 中文</button>
+    </div>
+  </header>
+
+  <div class="container" id="mainContainer">
+    <!-- 內容會透過 JavaScript 動態載入 -->
+  </div>
+
+  <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
     import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 
-    // 填入您的 Firebase 設定
+    // 💡 請在此處填入您的真實 Firebase 設定
     const firebaseConfig = {
       apiKey: "YOUR_API_KEY",
       authDomain: "YOUR_AUTH_DOMAIN",
@@ -15,25 +443,21 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // 簡易多語系字典
     const translations = {
       zh: {
         site_title: "✨ CreatorHub 創作者個人作品集與互動牆",
         nav_brand: "CreatorHub",
-        preview_mode: "👁️ 預覽模式",
         profile_title: "個人檔案設定",
         avatar_text: "上傳頭貼",
         name_label: "創作者名稱",
-        name_placeholder: "例如：Alex Chen / 數位遊牧者",
         bio_label: "個人簡介 / 座右銘",
-        bio_placeholder: "熱愛前端技術、UI/UX 設計與 AI 應用...",
         portfolio_title: "精選作品集",
         add_project_btn: "+ 新增作品",
         publish_title: "發佈您的個人網站",
-        publish_desc: "點擊下方按鈕將您的最新修改儲存至雲端，訪客透過專屬連結即可看見您的即時更新！",
+        publish_desc: "點擊下方按鈕將您的最新修改儲存至雲端！",
         publish_btn: "🚀 儲存並同步至雲端",
         my_comments_title: "訪客留言與互動紀錄",
-        my_comments_desc: "這裡顯示所有訪客留給您的寶貴意見，您可以在此直接回覆：",
+        my_comments_desc: "這裡顯示所有訪客留給您的寶貴意見與討論串：",
         community_title: "探索其他創作者",
         community_desc: "點擊卡片即可造訪其他創作者的個人作品集！",
         no_creators: "目前還沒有其他創作者上線。"
@@ -41,20 +465,17 @@
       en: {
         site_title: "✨ CreatorHub Portfolio & Interaction Wall",
         nav_brand: "CreatorHub",
-        preview_mode: "👁️ Preview Mode",
         profile_title: "Profile Settings",
         avatar_text: "Upload Avatar",
         name_label: "Creator Name",
-        name_placeholder: "e.g., Alex Chen / Digital Nomad",
         bio_label: "Bio / Motto",
-        bio_placeholder: "Passionate about frontend, UI/UX, and AI applications...",
         portfolio_title: "Featured Portfolio",
         add_project_btn: "+ Add Project",
         publish_title: "Publish Your Portfolio",
-        publish_desc: "Click below to save your changes to the cloud. Visitors will see your updates instantly!",
+        publish_desc: "Click below to save your changes to the cloud!",
         publish_btn: "🚀 Save & Sync to Cloud",
-        my_comments_title: "Visitor Comments & Interactions",
-        my_comments_desc: "Here are valuable comments from your visitors. You can reply directly here:",
+        my_comments_title: "Visitor Comments & Threads",
+        my_comments_desc: "Here are comments and discussion threads from visitors:",
         community_title: "Explore Other Creators",
         community_desc: "Click any card to visit other creators' portfolios!",
         no_creators: "No other creators online yet."
@@ -63,12 +484,9 @@
 
     let currentLang = 'zh';
 
-    function t(key) {
-      return translations[currentLang][key] || key;
-    }
-
-    function switchLang(lang) {
-      currentLang = lang;
+    document.getElementById('langSwitchBtn').onclick = () => {
+      currentLang = currentLang === 'zh' ? 'en' : 'zh';
+      document.getElementById('langSwitchBtn').textContent = currentLang === 'zh' ? 'EN / 中文' : '中文 / EN';
       document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if (translations[currentLang][key]) {
@@ -79,20 +497,12 @@
           }
         }
       });
-    }
-
-    document.getElementById('langSwitchBtn').onclick = () => {
-      const newLang = currentLang === 'zh' ? 'en' : 'zh';
-      document.getElementById('langSwitchBtn').textContent = newLang === 'zh' ? 'EN / 中文' : '中文 / EN';
-      switchLang(newLang);
     };
 
     const urlParams = new URLSearchParams(window.location.search);
     const creatorIdFromUrl = urlParams.get('id');
     const mainContainer = document.getElementById('mainContainer');
     const previewBtnContainer = document.getElementById('previewBtnContainer');
-
-    // 預設 Demo ID (若沒有帶 id 參數則進入編輯模式)
     const DEFAULT_EDITOR_ID = "my_portfolio_demo";
 
     initApp();
@@ -105,8 +515,52 @@
       }
     }
 
+    function buildCommentItemHtml(c, commentIndex) {
+      const timeStr = c.createdAt ? new Date(c.createdAt).toLocaleString() : '';
+      
+      let repliesHtml = '';
+      if (c.replies && c.replies.length > 0) {
+        c.replies.forEach(r => {
+          const rTimeStr = r.createdAt ? new Date(r.createdAt).toLocaleString() : '';
+          repliesHtml += `
+            <div style="margin-top: 0.5rem; padding: 0.5rem 0.75rem; background: rgba(0,0,0,0.03); border-left: 2px solid var(--primary); border-radius: 4px;">
+              <div style="font-size: 0.8rem; font-weight: bold; color: var(--primary); display: flex; justify-content: space-between;">
+                <span>💬 ${escapeHtml(r.name)}</span>
+                <span style="color: var(--text-muted); font-size: 0.75rem;">${rTimeStr}</span>
+              </div>
+              <div style="font-size: 0.9rem; margin-top: 0.2rem; color: var(--text-main);">${escapeHtml(r.text)}</div>
+            </div>
+          `;
+        });
+      }
+
+      return `
+        <div class="comment-item" style="margin-bottom: 1.25rem; border: 1px solid var(--border); padding: 1rem; border-radius: 6px; background: var(--card-bg);" data-comment-idx="${commentIndex}">
+          <div class="comment-header" style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted);">
+            <span class="comment-author" style="font-weight: bold; color: var(--text-main);">💬 ${escapeHtml(c.name)}</span>
+            <span>${timeStr}</span>
+          </div>
+          <div class="comment-content" style="margin: 0.5rem 0 0.75rem 0; font-size: 0.95rem;">${escapeHtml(c.text)}</div>
+          
+          <div class="reply-list" style="margin-left: 1.5rem; margin-bottom: 0.75rem;">
+            ${repliesHtml}
+          </div>
+
+          <div class="sub-reply-box" style="margin-left: 1.5rem; border-top: 1px dashed var(--border); padding-top: 0.5rem;">
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.4rem;">
+              <input type="text" class="sub-reply-name" placeholder="您的稱呼" style="flex: 1; padding: 0.3rem 0.5rem; font-size: 0.85rem; border: 1px solid var(--border); border-radius: 4px;">
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="text" class="sub-reply-text" placeholder="回覆這則留言..." style="flex: 3; padding: 0.3rem 0.5rem; font-size: 0.85rem; border: 1px solid var(--border); border-radius: 4px;">
+              <button type="button" class="submit-sub-reply-btn" data-comment-index="${commentIndex}" style="background: var(--primary); color: white; border: none; padding: 0.3rem 0.8rem; border-radius: 4px; font-size: 0.8rem; cursor: pointer;">回覆</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     async function renderVisitorMode(uId) {
-      previewBtnContainer.innerHTML = `<button class="preview-toggle-btn" id="editModeBtn">✏️ 返回編輯模式</button>`;
+      previewBtnContainer.innerHTML = `<button class="btn-secondary" id="editModeBtn">✏️ 返回編輯模式</button>`;
       document.getElementById('editModeBtn').onclick = () => {
         window.location.href = window.location.pathname;
       };
@@ -151,31 +605,8 @@
 
           let commentsHtml = '';
           if (comments.length > 0) {
-            comments.forEach(c => {
-              const timeStr = c.createdAt ? new Date(c.createdAt).toLocaleString() : '';
-              let replyHtml = '';
-              if (c.reply && c.reply.text) {
-                const replyTimeStr = c.reply.createdAt ? new Date(c.reply.createdAt).toLocaleString() : '';
-                replyHtml = `
-                  <div class="creator-reply-box" style="margin-top: 0.75rem; padding: 0.75rem 1rem; background: rgba(99, 102, 241, 0.08); border-left: 3px solid var(--primary); border-radius: 4px;">
-                    <div style="font-size: 0.85rem; font-weight: bold; color: var(--primary); margin-bottom: 0.25rem;">
-                      👑 創作者回覆 <span>(${replyTimeStr})</span>
-                    </div>
-                    <div style="font-size: 0.95rem; color: var(--text-main);">${escapeHtml(c.reply.text)}</div>
-                  </div>
-                `;
-              }
-
-              commentsHtml += `
-                <div class="comment-item">
-                  <div class="comment-header">
-                    <span class="comment-author">💬 ${escapeHtml(c.name)}</span>
-                    <span>${timeStr}</span>
-                  </div>
-                  <div class="comment-content">${escapeHtml(c.text)}</div>
-                  ${replyHtml}
-                </div>
-              `;
+            comments.forEach((c, idx) => {
+              commentsHtml += buildCommentItemHtml(c, idx);
             });
           } else {
             commentsHtml = `<p id="noCommentsMsg" style="color: var(--text-muted); font-size: 0.9rem;">目前還沒有人留言，趕快留下你的第一則評論吧！</p>`;
@@ -190,9 +621,7 @@
 
             <div class="card">
               <h2 class="section-title">📂 精選作品專案</h2>
-              <div class="projects-grid">
-                ${projectsHtml}
-              </div>
+              <div class="projects-grid">${projectsHtml}</div>
             </div>
 
             <div class="card">
@@ -201,9 +630,9 @@
                 ${commentsHtml}
               </div>
               <div class="comment-form-box" style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
-                <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">留下您的回饋與鼓勵</h3>
+                <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">留下您的主留言</h3>
                 <div class="form-group" style="margin-bottom: 1rem;">
-                  <input type="text" id="commentAuthor" placeholder="您的稱呼 (例如：路過的前端工程師)">
+                  <input type="text" id="commentAuthor" placeholder="您的稱呼">
                 </div>
                 <div class="form-group" style="margin-bottom: 1rem;">
                   <textarea id="commentText" placeholder="想對創作者說的話..."></textarea>
@@ -213,7 +642,6 @@
             </div>
           `;
 
-          // 綁定點讚功能
           document.querySelectorAll('.like-btn').forEach(btn => {
             btn.onclick = async () => {
               const pIdx = parseInt(btn.getAttribute('data-project-index'));
@@ -221,13 +649,10 @@
               btn.querySelector('.like-count').textContent = projects[pIdx].likes;
               try {
                 await updateDoc(docRef, { projects: projects });
-              } catch (err) {
-                console.error("更新點讚失敗", err);
-              }
+              } catch (err) { console.error(err); }
             };
           });
 
-          // 綁定送出留言功能
           document.getElementById('submitCommentBtn').onclick = async () => {
             const authorInput = document.getElementById('commentAuthor');
             const textInput = document.getElementById('commentText');
@@ -243,52 +668,105 @@
               name: cName,
               text: cText,
               createdAt: new Date().toISOString(),
-              reply: null
+              replies: []
             };
 
             try {
-              await updateDoc(docRef, {
-                comments: arrayUnion(newComment)
-              });
-
+              await updateDoc(docRef, { comments: arrayUnion(newComment) });
+              comments.push(newComment);
               authorInput.value = '';
               textInput.value = '';
               
-              const commentListContainer = document.getElementById('commentListContainer');
+              const listContainer = document.getElementById('commentListContainer');
               const noMsg = document.getElementById('noCommentsMsg');
               if (noMsg) noMsg.remove();
-
-              const timeStr = new Date(newComment.createdAt).toLocaleString();
-              const commentItemHtml = `
-                <div class="comment-item">
-                  <div class="comment-header">
-                    <span class="comment-author">💬 ${escapeHtml(newComment.name)}</span>
-                    <span>${timeStr}</span>
-                  </div>
-                  <div class="comment-content">${escapeHtml(newComment.text)}</div>
-                </div>
-              `;
-              commentListContainer.insertAdjacentHTML('afterbegin', commentItemHtml);
+              
+              listContainer.insertAdjacentHTML('beforeend', buildCommentItemHtml(newComment, comments.length - 1));
             } catch (err) {
-              console.error("留言送出失敗", err);
-              alert("留言送出失敗，請稍後再試。");
+              console.error(err);
+              alert("送出失敗，請稍後再試。");
             }
           };
 
+          document.getElementById('commentListContainer').addEventListener('click', async (e) => {
+            if (e.target.classList.contains('submit-sub-reply-btn')) {
+              const commentIdx = parseInt(e.target.getAttribute('data-comment-index'));
+              const box = e.target.closest('.sub-reply-box');
+              const rNameInput = box.querySelector('.sub-reply-name');
+              const rTextInput = box.querySelector('.sub-reply-text');
+              const rName = rNameInput.value.trim();
+              const rText = rTextInput.value.trim();
+
+              if (!rName || !rText) {
+                alert('請填寫稱呼與回覆內容！');
+                return;
+              }
+
+              const newReply = {
+                name: rName,
+                text: rText,
+                createdAt: new Date().toISOString()
+              };
+
+              if (!comments[commentIdx].replies) {
+                comments[commentIdx].replies = [];
+              }
+              comments[commentIdx].replies.push(newReply);
+
+              try {
+                await updateDoc(docRef, { comments: comments });
+                rNameInput.value = '';
+                rTextInput.value = '';
+                
+                const itemDiv = document.querySelector(`[data-comment-idx="${commentIdx}"]`);
+                const replyListContainer = itemDiv.querySelector('.reply-list');
+                const rTimeStr = new Date(newReply.createdAt).toLocaleString();
+                
+                replyListContainer.insertAdjacentHTML('beforeend', `
+                  <div style="margin-top: 0.5rem; padding: 0.5rem 0.75rem; background: rgba(0,0,0,0.03); border-left: 2px solid var(--primary); border-radius: 4px;">
+                    <div style="font-size: 0.8rem; font-weight: bold; color: var(--primary); display: flex; justify-content: space-between;">
+                      <span>💬 ${escapeHtml(newReply.name)}</span>
+                      <span style="color: var(--text-muted); font-size: 0.75rem;">${rTimeStr}</span>
+                    </div>
+                    <div style="font-size: 0.9rem; margin-top: 0.2rem; color: var(--text-main);">${escapeHtml(newReply.text)}</div>
+                  </div>
+                `);
+              } catch (err) {
+                console.error(err);
+                alert("回覆送出失敗，請稍後再試。");
+              }
+            }
+          });
+
         } else {
-          mainContainer.innerHTML = `<div class="card" style="text-align: center; padding: 3rem;"><h2 style="margin-bottom: 1rem;">找不到此創作者</h2><p style="color: var(--text-muted); margin-bottom: 1.5rem;">此作品集可能不存在或已被刪除。</p><a href="index.html" class="back-home-btn" id="errBackHome">返回主頁</a></div>`;
-          document.getElementById('errBackHome').onclick = (e) => {
-            e.preventDefault();
-            window.location.href = window.location.pathname;
+          const defaultData = {
+            name: "我的創作者空間",
+            bio: "歡迎來到我的個人作品集網站！",
+            avatar: "",
+            projects: [],
+            comments: []
           };
+          await setDoc(docRef, defaultData);
+          await renderVisitorMode(uId);
         }
-      } catch (e) {
-        console.error("載入訪客頁面失敗", e);
+      } catch (e) { 
+        console.error(e);
+        mainContainer.innerHTML = `
+          <div class="card" style="text-align: center; padding: 3rem;">
+            <h2>載入失敗</h2>
+            <p style="color: var(--text-muted); margin: 1rem 0;">請檢查網路連線或 Firebase 設定。</p>
+            <button class="btn-secondary" id="errBackHome">返回主頁</button>
+          </div>
+        `;
+        const backBtn = document.getElementById('errBackHome');
+        if(backBtn) {
+          backBtn.onclick = () => { window.location.href = window.location.pathname; };
+        }
       }
     }
 
     async function renderEditorMode(uId) {
-      previewBtnContainer.innerHTML = `<button class="preview-toggle-btn" id="previewModeBtn">👁️ 預覽模式</button>`;
+      previewBtnContainer.innerHTML = `<button class="btn-secondary" id="previewModeBtn">👁️ 預覽模式</button>`;
       document.getElementById('previewModeBtn').onclick = () => {
         window.location.href = `${window.location.pathname}?id=${uId}`;
       };
@@ -296,16 +774,11 @@
       const docRef = doc(db, "users", uId);
       const docSnap = await getDoc(docRef);
 
-      let userData = {
-        name: '',
-        bio: '',
-        avatar: '',
-        projects: [],
-        comments: []
-      };
-
+      let userData = { name: '', bio: '', avatar: '', projects: [], comments: [] };
       if (docSnap.exists()) {
         userData = docSnap.data();
+      } else {
+        await setDoc(docRef, userData);
       }
 
       let projectsHtml = '';
@@ -318,16 +791,16 @@
                 <button type="button" class="delete-project-btn" data-del-index="${index}">刪除此項</button>
               </div>
               <div class="form-group" style="margin-bottom: 1rem;">
-                <label data-i18n="proj_title_label">作品標題</label>
+                <label>作品標題</label>
                 <input type="text" class="proj-title-input" value="${escapeHtml(p.title || '')}" placeholder="例如：AI 智慧客服系統">
               </div>
               <div class="form-group" style="margin-bottom: 1rem;">
-                <label data-i18n="proj_desc_label">作品簡述</label>
+                <label>作品簡述</label>
                 <textarea class="proj-desc-input" placeholder="簡述專案背景、架構與成果...">${escapeHtml(p.desc || '')}</textarea>
               </div>
               <div class="form-group">
-                <label data-i18n="proj_tags_label">標籤 (用空格隔開)</label>
-                <input type="text" class="proj-tags-input" value="${escapeHtml(p.tags || '')}" placeholder="React Firebase Tailwind">
+                <label>標籤 (用空格隔開)</label>
+                <input type="text" class="proj-tags-input" value="${escapeHtml(p.tags || '')}" placeholder="React Firebase">
               </div>
             </div>
           `;
@@ -337,89 +810,51 @@
       let myCommentsHtml = '';
       const myComments = userData.comments || [];
       if (myComments.length > 0) {
-        // 迴圈渲染後台留言與回覆輸入框
         myComments.forEach((c, index) => {
-          const timeStr = c.createdAt ? new Date(c.createdAt).toLocaleString() : '';
-          let replyContentHtml = '';
-          if (c.reply && c.reply.text) {
-            const replyTimeStr = c.reply.createdAt ? new Date(c.reply.createdAt).toLocaleString() : '';
-            replyContentHtml = `
-              <div style="margin-top: 0.75rem; padding: 0.75rem; background: rgba(99, 102, 241, 0.08); border-left: 3px solid var(--primary); border-radius: 4px;">
-                <div style="font-size: 0.8rem; font-weight: bold; color: var(--primary);">已回覆 (${replyTimeStr})：</div>
-                <div style="font-size: 0.9rem; margin-top: 0.2rem;">${escapeHtml(c.reply.text)}</div>
-              </div>
-            `;
-          }
-
-          myCommentsHtml += `
-            <div class="comment-item" style="margin-bottom: 1.5rem;">
-              <div class="comment-header">
-                <span class="comment-author">💬 ${escapeHtml(c.name)}</span>
-                <span>${timeStr}</span>
-              </div>
-              <div class="comment-content" style="margin-bottom: 0.5rem;">${escapeHtml(c.text)}</div>
-              ${replyContentHtml}
-              <div class="reply-action-area" style="margin-top: 0.75rem;">
-                <textarea class="reply-input" data-comment-index="${index}" placeholder="輸入要回覆給這位訪客的話..." style="width: 100%; min-height: 60px; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; resize: vertical; margin-bottom: 0.5rem;">${c.reply ? c.reply.text : ''}</textarea>
-                <button type="button" class="send-reply-btn" data-comment-index="${index}" style="background: var(--primary); color: white; border: none; padding: 0.4rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">送出/更新回覆</button>
-              </div>
-            </div>
-          `;
+          myCommentsHtml += buildCommentItemHtml(c, index);
         });
       } else {
         myCommentsHtml = `<p style="color: var(--text-muted); font-size: 0.9rem;">目前還沒有訪客留言。</p>`;
       }
 
-      // 載入其他創作者
       let creatorsHtml = '';
       try {
         const querySnapshot = await getDocs(collection(db, "users"));
-        let creatorsList = [];
         querySnapshot.forEach((d) => {
           if (d.id !== uId) {
-            creatorsList.push({ id: d.id, ...d.data() });
-          }
-        });
-
-        if (creatorsList.length > 0) {
-          creatorsList.forEach(c => {
+            const cData = d.data();
             creatorsHtml += `
-              <a href="${window.location.pathname}?id=${c.id}" class="creator-card">
-                <img src="${c.avatar || 'https://via.placeholder.com/45'}" alt="頭貼" class="creator-avatar">
+              <a href="${window.location.pathname}?id=${d.id}" class="creator-card">
+                <img src="${cData.avatar || 'https://via.placeholder.com/45'}" alt="頭貼" class="creator-avatar">
                 <div class="creator-info">
-                  <h4>${escapeHtml(c.name || '無名創作者')}</h4>
-                  <p>${escapeHtml(c.bio || '尚未填寫介紹')}</p>
+                  <h4>${escapeHtml(cData.name || '無名創作者')}</h4>
+                  <p>${escapeHtml(cData.bio || '尚未填寫介紹')}</p>
                 </div>
               </a>
             `;
-          });
-        } else {
-          creatorsHtml = `<p style="color: var(--text-muted); font-size: 0.9rem;" data-i18n="no_creators">目前還沒有其他創作者上線。</p>`;
-        }
-      } catch (e) {
-        console.error("載入創作者牆失敗", e);
-        creatorsHtml = `<p style="color: var(--text-muted); font-size: 0.9rem;">載入失敗。</p>`;
-      }
+          }
+        });
+      } catch (e) { console.error(e); }
 
       mainContainer.innerHTML = `
         <div class="card" id="profile-section">
-          <h2 class="section-title" data-i18n="profile_title">${t('profile_title')}</h2>
+          <h2 class="section-title" data-i18n="profile_title">個人檔案設定</h2>
           <div class="profile-grid">
             <div class="avatar-area">
               <div class="avatar-box" id="avatarBox">
-                ${userData.avatar ? `<img src="${userData.avatar}" alt="頭貼">` : `<span class="plus-icon">+</span><span class="upload-text" data-i18n="avatar_text">${t('avatar_text')}</span>`}
+                ${userData.avatar ? `<img src="${userData.avatar}" alt="頭貼">` : `<span class="plus-icon">+</span><span class="upload-text" data-i18n="avatar_text">上傳頭貼</span>`}
               </div>
               <input type="file" id="avatarFileInput" accept="image/*" style="display: none;">
               <button type="button" class="upload-btn" id="uploadAvatarBtn">📷 更換頭貼</button>
             </div>
             <div class="profile-fields">
               <div class="form-group">
-                <label data-i18n="name_label">${t('name_label')}</label>
-                <input type="text" id="ownerNameInput" value="${escapeHtml(userData.name || '')}" placeholder="${t('name_placeholder')}">
+                <label data-i18n="name_label">創作者名稱</label>
+                <input type="text" id="ownerNameInput" value="${escapeHtml(userData.name || '')}" placeholder="創作者名稱">
               </div>
               <div class="form-group">
-                <label data-i18n="bio_label">${t('bio_label')}</label>
-                <textarea id="ownerBioInput" placeholder="${t('bio_placeholder')}">${escapeHtml(userData.bio || '')}</textarea>
+                <label data-i18n="bio_label">個人簡介 / 座右銘</label>
+                <textarea id="ownerBioInput" placeholder="個人簡介">${escapeHtml(userData.bio || '')}</textarea>
               </div>
             </div>
           </div>
@@ -427,65 +862,55 @@
 
         <div class="card" id="portfolio-section">
           <div class="section-title">
-            <span data-i18n="portfolio_title">${t('portfolio_title')}</span>
-            <button type="button" class="header-add-btn" id="addProjectBtn" data-i18n="add_project_btn">${t('add_project_btn')}</button>
+            <span data-i18n="portfolio_title">精選作品集</span>
+            <button type="button" class="header-add-btn" id="addProjectBtn" data-i18n="add_project_btn">+ 新增作品</button>
           </div>
-          <div id="projectsEditorContainer">
-            ${projectsHtml}
-          </div>
+          <div id="projectsEditorContainer">${projectsHtml}</div>
         </div>
 
         <div class="card publish-section">
-          <h2 class="section-title" style="justify-content: center;" data-i18n="publish_title">${t('publish_title')}</h2>
-          <p class="publish-desc" data-i18n="publish_desc">${t('publish_desc')}</p>
-          <button type="button" class="publish-btn" id="publishCloudBtn" data-i18n="publish_btn">${t('publish_btn')}</button>
+          <h2 class="section-title" style="justify-content: center;" data-i18n="publish_title">發佈您的個人網站</h2>
+          <p class="publish-desc" data-i18n="publish_desc">點擊下方按鈕將您的最新修改儲存至雲端！</p>
+          <button type="button" class="publish-btn" id="publishCloudBtn" data-i18n="publish_btn">🚀 儲存並同步至雲端</button>
         </div>
 
         <div class="card">
-          <h2 class="section-title" data-i18n="my_comments_title">${t('my_comments_title')}</h2>
-          <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;" data-i18n="my_comments_desc">${t('my_comments_desc')}</p>
+          <h2 class="section-title" data-i18n="my_comments_title">訪客留言與互動紀錄</h2>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;" data-i18n="my_comments_desc">這裡顯示所有訪客留給您的寶貴意見與討論串：</p>
           <div class="comment-list" id="myCommentsEditorList">
             ${myCommentsHtml}
           </div>
         </div>
 
         <div class="card" id="community-section">
-          <h2 class="section-title" data-i18n="community_title">${t('community_title')}</h2>
-          <p style="color: var(--text-muted); font-size: 0.9rem;" data-i18n="community_desc">${t('community_desc')}</p>
-          <div class="creators-grid">
-            ${creatorsHtml}
-          </div>
+          <h2 class="section-title" data-i18n="community_title">探索其他創作者</h2>
+          <p style="color: var(--text-muted); font-size: 0.9rem;" data-i18n="community_desc">點擊卡片即可造訪其他創作者的個人作品集！</p>
+          <div class="creators-grid">${creatorsHtml}</div>
         </div>
       `;
 
-      // 頭貼上傳處理
       const avatarBox = document.getElementById('avatarBox');
       const avatarFileInput = document.getElementById('avatarFileInput');
-      const uploadAvatarBtn = document.getElementById('uploadAvatarBtn');
-
       avatarBox.onclick = () => avatarFileInput.click();
-      uploadAvatarBtn.onclick = () => avatarFileInput.click();
-
+      document.getElementById('uploadAvatarBtn').onclick = () => avatarFileInput.click();
       avatarFileInput.onchange = (e) => {
         const file = e.target.files[0];
         if (file) {
           const reader = new FileReader();
-          reader.onload = (uploadEvent) => {
-            userData.avatar = uploadEvent.target.result;
+          reader.onload = (evt) => {
+            userData.avatar = evt.target.result;
             avatarBox.innerHTML = `<img src="${userData.avatar}" alt="頭貼">`;
           };
           reader.readAsDataURL(file);
         }
       };
 
-      // 新增專案卡片按鈕
       document.getElementById('addProjectBtn').onclick = () => {
         if (!userData.projects) userData.projects = [];
         userData.projects.push({ title: '', desc: '', tags: '', likes: 0 });
         renderProjectsList(userData.projects);
       };
 
-      // 監聽專案刪除按鈕
       document.getElementById('projectsEditorContainer').addEventListener('click', (e) => {
         if (e.target.classList.contains('delete-project-btn')) {
           const idx = parseInt(e.target.getAttribute('data-del-index'));
@@ -495,28 +920,32 @@
         }
       });
 
-      // 監聽後台「送出/更新回覆」按鈕
       document.getElementById('myCommentsEditorList').addEventListener('click', async (e) => {
-        if (e.target.classList.contains('send-reply-btn')) {
+        if (e.target.classList.contains('submit-sub-reply-btn')) {
           const commentIdx = parseInt(e.target.getAttribute('data-comment-index'));
-          const textarea = document.querySelector(`.reply-input[data-comment-index="${commentIdx}"]`);
-          const replyText = textarea.value.trim();
+          const box = e.target.closest('.sub-reply-box');
+          const rNameInput = box.querySelector('.sub-reply-name');
+          const rTextInput = box.querySelector('.sub-reply-text');
+          const rName = rNameInput.value.trim() || userData.name || '創作者';
+          const rText = rTextInput.value.trim();
 
-          if (!replyText) {
+          if (!rText) {
             alert('回覆內容不能為空！');
             return;
           }
 
-          // 先收集當前畫面的其它欄位資料，避免發佈時被覆蓋
           collectCurrentEditorData(userData);
 
-          // 更新該則留言的 reply 屬性
-          if (userData.comments && userData.comments[commentIdx]) {
-            userData.comments[commentIdx].reply = {
-              text: replyText,
-              createdAt: new Date().toISOString()
-            };
+          const newReply = {
+            name: rName,
+            text: rText,
+            createdAt: new Date().toISOString()
+          };
+
+          if (!userData.comments[commentIdx].replies) {
+            userData.comments[commentIdx].replies = [];
           }
+          userData.comments[commentIdx].replies.push(newReply);
 
           try {
             await setDoc(docRef, {
@@ -526,34 +955,29 @@
               projects: userData.projects,
               comments: userData.comments
             }, { merge: true });
-
-            alert('✅ 回覆已成功發送並同步至雲端！');
-            // 重新整理編輯器畫面以更新顯示狀態
+            alert('回覆成功！');
             await renderEditorMode(uId);
           } catch (err) {
-            console.error("回覆儲存失敗", err);
-            alert('回覆儲存失敗，請稍後再試。');
+            console.error(err);
+            alert('回覆失敗，請稍後再試。');
           }
         }
       });
 
-      // 點擊同步至雲端
       document.getElementById('publishCloudBtn').onclick = async () => {
         collectCurrentEditorData(userData);
-
         try {
           await setDoc(docRef, {
             name: userData.name,
             bio: userData.bio,
             avatar: userData.avatar,
             projects: userData.projects,
-            comments: userData.comments || []
+            comments: userData.comments
           }, { merge: true });
-
-          alert('🎉 成功同步至雲端資料庫！');
-        } catch (e) {
-          console.error("同步失敗", e);
-          alert('同步失敗，請檢查網路或 Firebase 權限設定。');
+          alert('🎉 儲存並同步至雲端成功！');
+        } catch (err) {
+          console.error(err);
+          alert('❌ 儲存失敗，請檢查網路連線。');
         }
       };
     }
@@ -564,19 +988,18 @@
       if (nameInput) userData.name = nameInput.value.trim();
       if (bioInput) userData.bio = bioInput.value.trim();
 
-      const projectCards = document.querySelectorAll('.project-item');
-      let updatedProjects = [];
-      projectCards.forEach((card, idx) => {
-        const titleVal = card.querySelector('.proj-title-input').value;
-        const descVal = card.querySelector('.proj-desc-input').value;
-        const tagsVal = card.querySelector('.proj-tags-input').value;
-        const existingLikes = userData.projects && userData.projects[idx] ? (userData.projects[idx].likes || 0) : 0;
-
+      const projectItems = document.querySelectorAll('.project-item');
+      const updatedProjects = [];
+      projectItems.forEach(item => {
+        const title = item.querySelector('.proj-title-input').value.trim();
+        const desc = item.querySelector('.proj-desc-input').value.trim();
+        const tags = item.querySelector('.proj-tags-input').value.trim();
+        const oldLikes = item.getAttribute('data-likes') || 0;
         updatedProjects.push({
-          title: titleVal,
-          desc: descVal,
-          tags: tagsVal,
-          likes: existingLikes
+          title,
+          desc,
+          tags,
+          likes: parseInt(oldLikes)
         });
       });
       userData.projects = updatedProjects;
@@ -587,7 +1010,7 @@
       let html = '';
       projects.forEach((p, index) => {
         html += `
-          <div class="project-item" data-index="${index}">
+          <div class="project-item" data-index="${index}" data-likes="${p.likes || 0}">
             <div class="project-header-row">
               <span class="project-title-label">#${index + 1}</span>
               <button type="button" class="delete-project-btn" data-del-index="${index}">刪除此項</button>
@@ -602,7 +1025,7 @@
             </div>
             <div class="form-group">
               <label>標籤 (用空格隔開)</label>
-              <input type="text" class="proj-tags-input" value="${escapeHtml(p.tags || '')}" placeholder="React Firebase Tailwind">
+              <input type="text" class="proj-tags-input" value="${escapeHtml(p.tags || '')}" placeholder="React Firebase">
             </div>
           </div>
         `;
@@ -612,11 +1035,12 @@
 
     function escapeHtml(str) {
       if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+      return str.replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
     }
   </script>
+</body>
+</html>
