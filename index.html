@@ -153,7 +153,6 @@
         <option value="ko">🇰🇷 한국어</option>
       </select>
       <button class="theme-toggle" id="themeToggleBtn">🌙</button>
-      <!-- 登入按鈕動態生成 -->
     </div>
   </header>
 
@@ -371,13 +370,14 @@
 
     let currentLang = localStorage.getItem('portfolio_lang') || 'zh-Hant';
     const langSelect = document.getElementById('langSelect');
-    langSelect.value = currentLang;
-
-    langSelect.addEventListener('change', (e) => {
-      currentLang = e.target.value;
-      localStorage.setItem('portfolio_lang', currentLang);
-      updatePageTexts();
-    });
+    if (langSelect) {
+      langSelect.value = currentLang;
+      langSelect.addEventListener('change', (e) => {
+        currentLang = e.target.value;
+        localStorage.setItem('portfolio_lang', currentLang);
+        updatePageTexts();
+      });
+    }
 
     function t(key) {
       return translations[currentLang][key] || translations['zh-Hant'][key] || key;
@@ -394,33 +394,31 @@
 
     // Dark Mode 切換
     const themeBtn = document.getElementById('themeToggleBtn');
-    themeBtn.addEventListener('click', () => {
-      const html = document.documentElement;
-      if (html.getAttribute('data-theme') === 'light') {
-        html.setAttribute('data-theme', 'dark');
-        themeBtn.textContent = '☀️';
-      } else {
-        html.setAttribute('data-theme', 'light');
-        themeBtn.textContent = '🌙';
-      }
-    });
+    if (themeBtn) {
+      themeBtn.addEventListener('click', () => {
+        const html = document.documentElement;
+        if (html.getAttribute('data-theme') === 'light') {
+          html.setAttribute('data-theme', 'dark');
+          themeBtn.textContent = '☀️';
+        } else {
+          html.setAttribute('data-theme', 'light');
+          themeBtn.textContent = '🌙';
+        }
+      });
+    }
 
     const urlParams = new URLSearchParams(window.location.search);
     const profileId = urlParams.get('id');
     const mainContainer = document.getElementById('mainContainer');
-    const navRight = document.getElementById('navRight');
 
-    // 監聽 Google 登入狀態
     onAuthStateChanged(auth, async (user) => {
       const currentThemeIcon = document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
-      themeBtn.textContent = currentThemeIcon;
+      if (themeBtn) themeBtn.textContent = currentThemeIcon;
       
       if (profileId) {
-        // 訪客模式
         document.getElementById('navLinks').style.display = 'none';
         loadVisitorProfile(profileId);
       } else {
-        // 主頁 / 編輯模式
         if (user) {
           renderEditorMode(user.uid);
         } else {
@@ -607,7 +605,6 @@
 
     function renderEditorMode(currentUserId) {
       const user = auth.currentUser;
-      const userName = user ? (user.displayName || '使用者') : '使用者';
 
       mainContainer.innerHTML = `
         <div class="card" id="profile-section">
