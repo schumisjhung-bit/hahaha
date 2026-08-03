@@ -1,4 +1,233 @@
-<!-- 承接上文未完成的 JavaScript 結尾與初始化 -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+    // 填入您的 Firebase 設定
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE_BUCKET",
+      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // 簡易多語系字典
+    const translations = {
+      zh: {
+        site_title: "✨ CreatorHub 創作者個人作品集與互動牆",
+        nav_brand: "CreatorHub",
+        preview_mode: "👁️ 預覽模式",
+        profile_title: "個人檔案設定",
+        avatar_text: "上傳頭貼",
+        name_label: "創作者名稱",
+        name_placeholder: "例如：Alex Chen / 數位遊牧者",
+        bio_label: "個人簡介 / 座右銘",
+        bio_placeholder: "熱愛前端技術、UI/UX 設計與 AI 應用...",
+        portfolio_title: "精選作品集",
+        add_project_btn: "+ 新增作品",
+        publish_title: "發佈您的個人網站",
+        publish_desc: "點擊下方按鈕將您的最新修改儲存至雲端，訪客透過專屬連結即可看見您的即時更新！",
+        publish_btn: "🚀 儲存並同步至雲端",
+        my_comments_title: "訪客留言與互動紀錄",
+        my_comments_desc: "這裡顯示所有訪客留給您的寶貴意見，您可以在此直接回覆：",
+        community_title: "探索其他創作者",
+        community_desc: "點擊卡片即可造訪其他創作者的個人作品集！",
+        no_creators: "目前還沒有其他創作者上線。"
+      },
+      en: {
+        site_title: "✨ CreatorHub Portfolio & Interaction Wall",
+        nav_brand: "CreatorHub",
+        preview_mode: "👁️ Preview Mode",
+        profile_title: "Profile Settings",
+        avatar_text: "Upload Avatar",
+        name_label: "Creator Name",
+        name_placeholder: "e.g., Alex Chen / Digital Nomad",
+        bio_label: "Bio / Motto",
+        bio_placeholder: "Passionate about frontend, UI/UX, and AI applications...",
+        portfolio_title: "Featured Portfolio",
+        add_project_btn: "+ Add Project",
+        publish_title: "Publish Your Portfolio",
+        publish_desc: "Click below to save your changes to the cloud. Visitors will see your updates instantly!",
+        publish_btn: "🚀 Save & Sync to Cloud",
+        my_comments_title: "Visitor Comments & Interactions",
+        my_comments_desc: "Here are valuable comments from your visitors. You can reply directly here:",
+        community_title: "Explore Other Creators",
+        community_desc: "Click any card to visit other creators' portfolios!",
+        no_creators: "No other creators online yet."
+      }
+    };
+
+    let currentLang = 'zh';
+
+    function t(key) {
+      return translations[currentLang][key] || key;
+    }
+
+    function switchLang(lang) {
+      currentLang = lang;
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[currentLang][key]) {
+          if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+            el.placeholder = translations[currentLang][key];
+          } else {
+            el.textContent = translations[currentLang][key];
+          }
+        }
+      });
+    }
+
+    document.getElementById('langSwitchBtn').onclick = () => {
+      const newLang = currentLang === 'zh' ? 'en' : 'zh';
+      document.getElementById('langSwitchBtn').textContent = newLang === 'zh' ? 'EN / 中文' : '中文 / EN';
+      switchLang(newLang);
+    };
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const creatorIdFromUrl = urlParams.get('id');
+    const mainContainer = document.getElementById('mainContainer');
+    const previewBtnContainer = document.getElementById('previewBtnContainer');
+
+    // 預設 Demo ID (若沒有帶 id 參數則進入編輯模式)
+    const DEFAULT_EDITOR_ID = "my_portfolio_demo";
+
+    initApp();
+
+    async function initApp() {
+      if (creatorIdFromUrl) {
+        await renderVisitorMode(creatorIdFromUrl);
+      } else {
+        await renderEditorMode(DEFAULT_EDITOR_ID);
+      }
+    }
+
+    async function renderVisitorMode(uId) {
+      previewBtnContainer.innerHTML = `<button class="preview-toggle-btn" id="editModeBtn">✏️ 返回編輯模式</button>`;
+      document.getElementById('editModeBtn').onclick = () => {
+        window.location.href = window.location.pathname;
+      };
+
+      try {
+        const docRef = doc(db, "users", uId);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const avatarUrl = data.avatar || 'https://via.placeholder.com/120';
+          const name = data.name || '無名創作者';
+          const bio = data.bio || '這位創作者還沒有寫自我介紹。';
+          const projects = data.projects || [];
+          const comments = data.comments || [];
+
+          let projectsHtml = '';
+          if (projects.length > 0) {
+            projects.forEach((p, idx) => {
+              const tagsArray = p.tags ? p.tags.split(' ').filter(t => t.trim() !== '') : [];
+              let tagsHtml = '';
+              tagsArray.forEach(tag => {
+                tagsHtml += `<span class="project-tag">${escapeHtml(tag)}</span>`;
+              });
+
+              projectsHtml += `
+                <div class="project-card">
+                  <h3 class="project-title">${escapeHtml(p.title || '未命名專案')}</h3>
+                  <p class="project-desc">${escapeHtml(p.desc || '無詳細說明。')}</p>
+                  <div class="project-tags">${tagsHtml}</div>
+                  <div class="project-footer">
+                    <button class="like-btn" data-project-index="${idx}">
+                      ❤️ <span class="like-count">${p.likes || 0}</span>
+                    </button>
+                  </div>
+                </div>
+              `;
+            });
+          } else {
+            projectsHtml = `<p style="color: var(--text-muted); grid-column: 1/-1;">此創作者尚未發表任何專案。</p>`;
+          }
+
+          let commentsHtml = '';
+          if (comments.length > 0) {
+            comments.forEach(c => {
+              const timeStr = c.createdAt ? new Date(c.createdAt).toLocaleString() : '';
+              let replyHtml = '';
+              if (c.reply && c.reply.text) {
+                const replyTimeStr = c.reply.createdAt ? new Date(c.reply.createdAt).toLocaleString() : '';
+                replyHtml = `
+                  <div class="creator-reply-box" style="margin-top: 0.75rem; padding: 0.75rem 1rem; background: rgba(99, 102, 241, 0.08); border-left: 3px solid var(--primary); border-radius: 4px;">
+                    <div style="font-size: 0.85rem; font-weight: bold; color: var(--primary); margin-bottom: 0.25rem;">
+                      👑 創作者回覆 <span>(${replyTimeStr})</span>
+                    </div>
+                    <div style="font-size: 0.95rem; color: var(--text-main);">${escapeHtml(c.reply.text)}</div>
+                  </div>
+                `;
+              }
+
+              commentsHtml += `
+                <div class="comment-item">
+                  <div class="comment-header">
+                    <span class="comment-author">💬 ${escapeHtml(c.name)}</span>
+                    <span>${timeStr}</span>
+                  </div>
+                  <div class="comment-content">${escapeHtml(c.text)}</div>
+                  ${replyHtml}
+                </div>
+              `;
+            });
+          } else {
+            commentsHtml = `<p id="noCommentsMsg" style="color: var(--text-muted); font-size: 0.9rem;">目前還沒有人留言，趕快留下你的第一則評論吧！</p>`;
+          }
+
+          mainContainer.innerHTML = `
+            <div class="card visitor-profile-card">
+              <img src="${avatarUrl}" alt="頭貼" class="visitor-avatar">
+              <h1 class="visitor-name">${escapeHtml(name)}</h1>
+              <p class="visitor-bio">${escapeHtml(bio)}</p>
+            </div>
+
+            <div class="card">
+              <h2 class="section-title">📂 精選作品專案</h2>
+              <div class="projects-grid">
+                ${projectsHtml}
+              </div>
+            </div>
+
+            <div class="card">
+              <h2 class="section-title">💬 訪客留言板</h2>
+              <div class="comment-list" id="commentListContainer">
+                ${commentsHtml}
+              </div>
+              <div class="comment-form-box" style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
+                <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">留下您的回饋與鼓勵</h3>
+                <div class="form-group" style="margin-bottom: 1rem;">
+                  <input type="text" id="commentAuthor" placeholder="您的稱呼 (例如：路過的前端工程師)">
+                </div>
+                <div class="form-group" style="margin-bottom: 1rem;">
+                  <textarea id="commentText" placeholder="想對創作者說的話..."></textarea>
+                </div>
+                <button type="button" class="publish-btn" id="submitCommentBtn" style="padding: 0.75rem 1.5rem; font-size: 0.95rem;">送出留言</button>
+              </div>
+            </div>
+          `;
+
+          // 綁定點讚功能
+          document.querySelectorAll('.like-btn').forEach(btn => {
+            btn.onclick = async () => {
+              const pIdx = parseInt(btn.getAttribute('data-project-index'));
+              projects[pIdx].likes = (projects[pIdx].likes || 0) + 1;
+              btn.querySelector('.like-count').textContent = projects[pIdx].likes;
+              try {
+                await updateDoc(docRef, { projects: projects });
+              } catch (err) {
+                console.error("更新點讚失敗", err);
+              }
+            };
+          });
+
+          // 綁定送出留言功能
           document.getElementById('submitCommentBtn').onclick = async () => {
             const authorInput = document.getElementById('commentAuthor');
             const textInput = document.getElementById('commentText');
@@ -13,7 +242,8 @@
             const newComment = {
               name: cName,
               text: cText,
-              createdAt: new Date().toISOString()
+              createdAt: new Date().toISOString(),
+              reply: null
             };
 
             try {
@@ -24,7 +254,6 @@
               authorInput.value = '';
               textInput.value = '';
               
-              // 動態新增留言到畫面上
               const commentListContainer = document.getElementById('commentListContainer');
               const noMsg = document.getElementById('noCommentsMsg');
               if (noMsg) noMsg.remove();
@@ -108,20 +337,37 @@
       let myCommentsHtml = '';
       const myComments = userData.comments || [];
       if (myComments.length > 0) {
-        myComments.forEach(c => {
+        // 迴圈渲染後台留言與回覆輸入框
+        myComments.forEach((c, index) => {
           const timeStr = c.createdAt ? new Date(c.createdAt).toLocaleString() : '';
+          let replyContentHtml = '';
+          if (c.reply && c.reply.text) {
+            const replyTimeStr = c.reply.createdAt ? new Date(c.reply.createdAt).toLocaleString() : '';
+            replyContentHtml = `
+              <div style="margin-top: 0.75rem; padding: 0.75rem; background: rgba(99, 102, 241, 0.08); border-left: 3px solid var(--primary); border-radius: 4px;">
+                <div style="font-size: 0.8rem; font-weight: bold; color: var(--primary);">已回覆 (${replyTimeStr})：</div>
+                <div style="font-size: 0.9rem; margin-top: 0.2rem;">${escapeHtml(c.reply.text)}</div>
+              </div>
+            `;
+          }
+
           myCommentsHtml += `
-            <div class="comment-item">
+            <div class="comment-item" style="margin-bottom: 1.5rem;">
               <div class="comment-header">
                 <span class="comment-author">💬 ${escapeHtml(c.name)}</span>
                 <span>${timeStr}</span>
               </div>
-              <div class="comment-content">${escapeHtml(c.text)}</div>
+              <div class="comment-content" style="margin-bottom: 0.5rem;">${escapeHtml(c.text)}</div>
+              ${replyContentHtml}
+              <div class="reply-action-area" style="margin-top: 0.75rem;">
+                <textarea class="reply-input" data-comment-index="${index}" placeholder="輸入要回覆給這位訪客的話..." style="width: 100%; min-height: 60px; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; resize: vertical; margin-bottom: 0.5rem;">${c.reply ? c.reply.text : ''}</textarea>
+                <button type="button" class="send-reply-btn" data-comment-index="${index}" style="background: var(--primary); color: white; border: none; padding: 0.4rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">送出/更新回覆</button>
+              </div>
             </div>
           `;
         });
       } else {
-        myCommentsHtml = `<p style="color: var(--text-muted); font-size: 0.9رم;">目前還沒有訪客留言。</p>`;
+        myCommentsHtml = `<p style="color: var(--text-muted); font-size: 0.9rem;">目前還沒有訪客留言。</p>`;
       }
 
       // 載入其他創作者
@@ -198,7 +444,7 @@
         <div class="card">
           <h2 class="section-title" data-i18n="my_comments_title">${t('my_comments_title')}</h2>
           <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;" data-i18n="my_comments_desc">${t('my_comments_desc')}</p>
-          <div class="comment-list">
+          <div class="comment-list" id="myCommentsEditorList">
             ${myCommentsHtml}
           </div>
         </div>
@@ -212,7 +458,7 @@
         </div>
       `;
 
-      // 頭貼上傳處理 (轉成 Base64)
+      // 頭貼上傳處理
       const avatarBox = document.getElementById('avatarBox');
       const avatarFileInput = document.getElementById('avatarFileInput');
       const uploadAvatarBtn = document.getElementById('uploadAvatarBtn');
@@ -246,6 +492,48 @@
           collectCurrentEditorData(userData);
           userData.projects.splice(idx, 1);
           renderProjectsList(userData.projects);
+        }
+      });
+
+      // 監聽後台「送出/更新回覆」按鈕
+      document.getElementById('myCommentsEditorList').addEventListener('click', async (e) => {
+        if (e.target.classList.contains('send-reply-btn')) {
+          const commentIdx = parseInt(e.target.getAttribute('data-comment-index'));
+          const textarea = document.querySelector(`.reply-input[data-comment-index="${commentIdx}"]`);
+          const replyText = textarea.value.trim();
+
+          if (!replyText) {
+            alert('回覆內容不能為空！');
+            return;
+          }
+
+          // 先收集當前畫面的其它欄位資料，避免發佈時被覆蓋
+          collectCurrentEditorData(userData);
+
+          // 更新該則留言的 reply 屬性
+          if (userData.comments && userData.comments[commentIdx]) {
+            userData.comments[commentIdx].reply = {
+              text: replyText,
+              createdAt: new Date().toISOString()
+            };
+          }
+
+          try {
+            await setDoc(docRef, {
+              name: userData.name,
+              bio: userData.bio,
+              avatar: userData.avatar,
+              projects: userData.projects,
+              comments: userData.comments
+            }, { merge: true });
+
+            alert('✅ 回覆已成功發送並同步至雲端！');
+            // 重新整理編輯器畫面以更新顯示狀態
+            await renderEditorMode(uId);
+          } catch (err) {
+            console.error("回覆儲存失敗", err);
+            alert('回覆儲存失敗，請稍後再試。');
+          }
         }
       });
 
@@ -332,5 +620,3 @@
         .replace(/'/g, '&#039;');
     }
   </script>
-</body>
-</html>
