@@ -94,7 +94,6 @@
     .visitor-project-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-main); }
     .visitor-project-card p { font-size: 0.95rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.5; }
     
-    /* 專案卡片底部按讚與標籤列 */
     .project-card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; flex-wrap: wrap; gap: 0.8rem; }
     .tag-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
     .tag { background: var(--border-color); color: var(--text-main); padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.78rem; font-weight: 600; }
@@ -189,7 +188,6 @@
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
-    // 點擊 Logo 返回主頁清空 query string
     document.getElementById('homeLogo').onclick = (e) => {
       e.preventDefault();
       window.location.href = window.location.pathname;
@@ -423,7 +421,6 @@
       });
     }
 
-    // Dark Mode 切換
     const themeBtn = document.getElementById('themeToggleBtn');
     if (themeBtn) {
       themeBtn.addEventListener('click', () => {
@@ -458,7 +455,7 @@
         if (user) {
           authBtnContainer.innerHTML = `<button class="auth-btn" id="logoutBtn" data-i18n="logout_btn">${t('logout_btn')}</button>`;
           document.getElementById('logoutBtn').onclick = () => signOut(auth);
-          renderEditorMode(user.uid);
+          await renderEditorMode(user.uid);
         } else {
           previewBtnContainer.innerHTML = '';
           authBtnContainer.innerHTML = '';
@@ -589,13 +586,11 @@
             </div>
           `;
 
-          // 綁定返回主頁按鈕
           document.getElementById('backHomeLink').onclick = (e) => {
             e.preventDefault();
             window.location.href = window.location.pathname;
           };
 
-          // 綁定作品按讚按鈕事件
           document.querySelectorAll('.like-action-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
               const targetBtn = e.currentTarget;
@@ -633,7 +628,6 @@
             });
           });
 
-          // 綁定留言送出事件
           document.getElementById('submitCommentBtn').addEventListener('click', async () => {
             const author = document.getElementById('commentAuthor').value.trim();
             const text = document.getElementById('commentText').value.trim();
@@ -700,14 +694,218 @@
 
     async function renderEditorMode(currentUserId) {
       previewBtnContainer.innerHTML = `<button class="preview-toggle-btn" id="previewToggleBtn" data-i18n="preview_mode_btn">${t('preview_mode_btn')}</button>`;
-      
-      // 這裡載入您原本編輯器的表單與創作者牆區塊
+
+      let userData = {
+        name: "",
+        bio: "",
+        avatar: "",
+        projects: [],
+        comments: []
+      };
+
+      try {
+        const userDocRef = doc(db, "users", currentUserId);
+        const userSnap = await getDoc(userDocRef);
+        if (userSnap.exists()) {
+          userData = userSnap.data();
+        }
+      } catch (e) {
+        console.error("載入使用者資料失敗", e);
+      }
+
       mainContainer.innerHTML = `
         <div class="card" id="profile-section">
           <h2 class="section-title" data-i18n="profile_title">${t('profile_title')}</h2>
-          <p style="color: var(--text-muted);">目前您已成功登入，可以開始編輯您的個人資料與作品集！</p>
+          <div class="profile-grid">
+            <div class="avatar-area">
+              <div class="avatar-box" id="avatarBox">
+                ${userData.avatar ? `<img src="${userData.avatar}" id="avatarImg">` : `<span class="plus-icon">+</span><span class="upload-text" data-i18n="avatar_text">${t('avatar_text')}</span>`}
+              </div>
+              <input type="file" id="avatarInput" accept="image/*" style="display: none;">
+            </div>
+            <div class="profile-fields">
+              <div class="form-group">
+                <label data-i18n="name_label">${t('name_label')}</label>
+                <input type="text" id="userNameInput" placeholder="${t('name_placeholder')}" value="${escapeHtml(userData.name || '')}">
+              </div>
+              <div class="form-group">
+                <label data-i18n="bio_label">${t('bio_label')}</label>
+                <textarea id="userBioInput" placeholder="${t('bio_placeholder')}">${escapeHtml(userData.bio || '')}</textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" id="portfolio-section">
+          <h2 class="section-title">
+            <span data-i18n="portfolio_title">${t('portfolio_title')}</span>
+            <button class="header-add-btn" id="addProjectBtn" data-i18n="add_project_btn">${t('add_project_btn')}</button>
+          </h2>
+          <div id="projectsEditorList"></div>
+        </div>
+
+        <div class="card publish-section">
+          <p class="publish-desc" data-i18n="publish_desc">${t('publish_desc')}</p>
+          <button class="publish-btn" id="publishBtn" data-i18n="publish_btn">${t('publish_btn')}</button>
+        </div>
+
+        <div class="card" id="myCommentsSection">
+          <h2 class="section-title" data-i18n="my_comments_title">${t('my_comments_title')}</h2>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;" data-i18n="my_comments_desc">${t('my_comments_desc')}</p>
+          <div class="comment-list" id="myCommentsListContainer"></div>
+        </div>
+
+        <div class="card" id="community-section">
+          <h2 class="section-title" data-i18n="community_title">${t('community_title')}</h2>
+          <p style="color: var(--text-muted); font-size: 0.9rem;" data-i18n="community_desc">${t('community_desc')}</p>
+          <div class="creators-grid" id="creatorsGridContainer"></div>
         </div>
       `;
+
+      // 渲染專案列表
+      const projectsListContainer = document.getElementById('projectsEditorList');
+      function renderProjectsEditor() {
+        if (!userData.projects || userData.projects.length === 0) {
+          projectsListContainer.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">尚未新增任何作品。</p>';
+          return;
+        }
+        projectsListContainer.innerHTML = '';
+        userData.projects.forEach((proj, idx) => {
+          const item = document.createElement('div');
+          item.className = 'project-item';
+          item.innerHTML = `
+            <div class="project-header-row">
+              <span class="project-title-label">#${idx + 1}</span>
+              <button class="delete-project-btn" data-del-index="${idx}" data-i18n="delete_proj">${t('delete_proj')}</button>
+            </div>
+            <div class="form-group" style="margin-bottom: 0.8rem;">
+              <label data-i18n="proj_title_label">${t('proj_title_label')}</label>
+              <input type="text" class="proj-title-input" data-index="${idx}" value="${escapeHtml(proj.title || '')}">
+            </div>
+            <div class="form-group" style="margin-bottom: 0.8rem;">
+              <label data-i18n="proj_desc_label">${t('proj_desc_label')}</label>
+              <textarea class="proj-desc-input" data-index="${idx}" style="min-height: 70px;">${escapeHtml(proj.desc || '')}</textarea>
+            </div>
+            <div class="form-group">
+              <label data-i18n="proj_tags_label">${t('proj_tags_label')}</label>
+              <input type="text" class="proj-tags-input" data-index="${idx}" value="${escapeHtml(proj.tags || '')}">
+            </div>
+          `;
+          projectsListContainer.appendChild(item);
+        });
+
+        // 綁定輸入即時同步
+        document.querySelectorAll('.proj-title-input').forEach(input => {
+          input.oninput = (e) => { userData.projects[e.target.dataset.index].title = e.target.value; };
+        });
+        document.querySelectorAll('.proj-desc-input').forEach(input => {
+          input.oninput = (e) => { userData.projects[e.target.dataset.index].desc = e.target.value; };
+        });
+        document.querySelectorAll('.proj-tags-input').forEach(input => {
+          input.oninput = (e) => { userData.projects[e.target.dataset.index].tags = e.target.value; };
+        });
+
+        // 刪除按鈕
+        document.querySelectorAll('.delete-project-btn').forEach(btn => {
+          btn.onclick = (e) => {
+            const index = parseInt(e.target.dataset.delIndex);
+            userData.projects.splice(index, 1);
+            renderProjectsEditor();
+          };
+        });
+      }
+
+      renderProjectsEditor();
+
+      document.getElementById('addProjectBtn').onclick = () => {
+        if (!userData.projects) userData.projects = [];
+        userData.projects.push({ title: "", desc: "", tags: "", likes: 0 });
+        renderProjectsEditor();
+      };
+
+      // 頭貼上傳處理 (轉成 Base64 儲存)
+      const avatarBox = document.getElementById('avatarBox');
+      const avatarInput = document.getElementById('avatarInput');
+      avatarBox.onclick = () => avatarInput.click();
+      avatarInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (uploadEvent) => {
+            userData.avatar = uploadEvent.target.result;
+            avatarBox.innerHTML = `<img src="${userData.avatar}" id="avatarImg">`;
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+
+      // 渲染自己的留言板
+      const myCommentsContainer = document.getElementById('myCommentsListContainer');
+      if (userData.comments && userData.comments.length > 0) {
+        myCommentsContainer.innerHTML = '';
+        userData.comments.forEach(c => {
+          const timeStr = c.createdAt ? new Date(c.createdAt).toLocaleString() : '';
+          myCommentsContainer.innerHTML += `
+            <div class="comment-item">
+              <div class="comment-header">
+                <span class="comment-author">💬 ${escapeHtml(c.name)}</span>
+                <span>${timeStr}</span>
+              </div>
+              <div class="comment-content">${escapeHtml(c.text)}</div>
+            </div>
+          `;
+        });
+      } else {
+        myCommentsContainer.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">目前還沒有訪客留言。</p>';
+      }
+
+      // 載入創作者牆
+      try {
+        const querySnapshot = await getDocs(collection(db, "users"));
+        const gridContainer = document.getElementById('creatorsGridContainer');
+        gridContainer.innerHTML = '';
+        let count = 0;
+        querySnapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const uId = docSnap.id;
+          count++;
+          gridContainer.innerHTML += `
+            <a href="?id=${uId}" class="creator-card">
+              <img src="${data.avatar || 'https://via.placeholder.com/45'}" class="creator-avatar" alt="頭貼">
+              <div class="creator-info">
+                <h4>${escapeHtml(data.name || '無名創作者')}</h4>
+                <p>${escapeHtml(data.bio || '尚未留下介紹...')}</p>
+              </div>
+            </a>
+          `;
+        });
+        if (count === 0) {
+          gridContainer.innerHTML = `<p style="color: var(--text-muted);">${t('no_creators')}</p>`;
+        }
+      } catch (err) {
+        console.error("載入創作者牆失敗", err);
+      }
+
+      // 儲存與發布按鈕
+      document.getElementById('publishBtn').onclick = async () => {
+        userData.name = document.getElementById('userNameInput').value.trim();
+        userData.bio = document.getElementById('userBioInput').value.trim();
+
+        const pubBtn = document.getElementById('publishBtn');
+        pubBtn.disabled = true;
+        pubBtn.textContent = '同步中...';
+
+        try {
+          await setDoc(doc(db, "users", currentUserId), userData, { merge: true });
+          alert('🚀 成功同步至雲端資料庫！');
+        } catch (e) {
+          console.error("儲存失敗", e);
+          alert('儲存失敗，請檢查網路連線。');
+        } finally {
+          pubBtn.disabled = false;
+          pubBtn.textContent = t('publish_btn');
+        }
+      };
     }
   </script>
 </body>
